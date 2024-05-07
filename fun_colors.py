@@ -1,5 +1,7 @@
-from colorama import Fore, Back, Style
+# holder file for easier printing of colored terminal text for readibility
+# taken from: https://www.geeksforgeeks.org/print-colors-python-terminal/
 
+from colorama import Fore, Back, Style
 def prRed(skk): print("\033[91m{}\033[00m" .format(skk))
 def prGreen(skk): print("\033[92m{}\033[00m" .format(skk))
 def prYellow(skk): print("\033[93m{}\033[00m" .format(skk))
