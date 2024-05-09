@@ -16,3 +16,6 @@ For a through report see the file '.\ece1895\ece1895 final.docx' including my fu
 ## Taken Resources
 ### [Colorama Functions](https://www.geeksforgeeks.org/print-colors-python-terminal/)
 From file '.\fun_colors.py', functions for easier printing of colored terminal text for readibility.
+
+### [Project Gutenburg](https://www.gutenberg.org/)
+Project Gutenburg is the oldest digital library, all books are public domain and [don't need permission for non-commercial use](https://www.gutenberg.org/policy/permission.html#:~:text=No%20permission%20is%20needed%20for,%E2%80%9CProject%20Gutenberg%E2%80%9D%20trademark%20included.)
