@@ -14,7 +14,5 @@ For a through report see the file '.\ece1895\ece1895 final.docx' including my fu
 
 
 ## Taken Resources
-### Colorama Functions
+### [Colorama Functions](https://www.geeksforgeeks.org/print-colors-python-terminal/)
 From file '.\fun_colors.py', functions for easier printing of colored terminal text for readibility.
-
-https://www.geeksforgeeks.org/print-colors-python-terminal/
