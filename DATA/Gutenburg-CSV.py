@@ -14,11 +14,16 @@ Some of this is overdone, this was done on purpose to be reused later in other m
 import csv,os,sys,time
 #sys.path.append('D:/projects/base/app/modules') 
 dir_path = os.path.dirname(os.path.realpath(__file__))[:-5]
-if __name__ == "__main__": print(f"DIRECTORY:\t\t{dir_path}>")
+print(f"DIRECTORY:\t\t<{dir_path}>")
 sys.path.append(dir_path)
 from fun_colors import *
 
-filepath = "D:\\book\\gutenburg"
+filepath = getDrive()+"book\\gutenburg"
+print(f"DRIVE_DIR:\t\t<{filepath}>")
+
+
+#///////////////////////////////////////////////////////////////
+#NOTE: manuals
 clean=[',','--','---','[',']',';','*','™','•',':','"',"'",'“','”','(',')','&','=','�','‘','’']#remove
 clean2=['***','?','!']#replace with '.'s
 
