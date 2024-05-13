@@ -62,7 +62,7 @@ for i in range(start,file_num):
                 
                 #catch data error
                 t=time.time()-currtime
-                if t > 10:
+                if t > 16:
                     print(Back.RED+f"TIME FAIL: <{gdFL( t )}> Restarting Browser..."+Style.RESET_ALL);pr=True
                     break
                 with open(download_dir+f"/gutenburg/pq{i}.txt", "w", encoding='utf-8') as f:
@@ -80,7 +80,7 @@ for i in range(start,file_num):
             continue
     if not pr: prCyan("<!!>Not Accepted<!!>")
     #need to restart browser if data error
-    if t > 10:
+    if t > 16:
         driver.close()
         driver = webdriver.Chrome()
         
