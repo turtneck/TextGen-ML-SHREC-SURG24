@@ -1,3 +1,4 @@
+#turns a csv file into dozen's of .txt's
 import pandas as pd
 import os
 import re
@@ -18,6 +19,3 @@ for i in text:
     cnt+=1
 
 print("DONE!!!!!")
-
-
-
