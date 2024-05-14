@@ -11,22 +11,25 @@ It will however filter out specific characters in the 'clean' list object that i
 Some of this is overdone, this was done on purpose to be reused later in other models
 '''
 #///////////////////////////////////////////////////////////////
-import csv,os,sys,time,numpy
+#imports
+import csv,os,sys,time,numpy,datetime
 #sys.path.append('D:/projects/base/app/modules') 
 dir_path = os.path.dirname(os.path.realpath(__file__))[:-5]
 print(f"DIRECTORY:\t\t<{dir_path}>")
 sys.path.append(dir_path)
 from fun_colors import *
 
+#file path and global variables
 filepath = getDrive()+"book\\gutenburg"
 print(f"DRIVE_DIR:\t\t<{filepath}>")
 printpath=filepath.split("\\")[0]+"\\"+filepath.split("\\")[1]+"\\"
-cnt=0
+cnt=0;nospace=False
 global word_cnt
+logger(printpath+'gutenburg_log.txt',   f"[!!!!!] START\t{str(datetime.datetime.now())}")
 
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
-clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&','=','�','‘','’','—','\t']#remove
+clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&','=','�','—','\t']#remove
 clean2=['***','?','!']#replace with '.'s
 clean3=['_']#replace space
 
@@ -37,8 +40,16 @@ def addword(str):
     #NOTE: check if word in file
     inside=False
     
+    #single
     if str[0] == "'" and str[-1] == "'": str=str[1:-1]
     elif str[0] == "'": str=str[1:]
+    elif str[0] == "‘" and str[-1] == "’": str=str[1:-1]
+    elif str[0] == "‘": str=str[1:]
+    #double
+    # elif str[0] == '"' and str[-1] == '"': str=str[1:-1]
+    # elif str[0] == '"': str=str[1:]
+    # elif str[0] == '“' and str[-1] == '”': str=str[1:-1]
+    # elif str[0] == '“': str=str[1:]
     
     #with open('temp_dict.txt','r') as read_queue:
     read_queue = open(printpath+'gutenburg.txt','r', encoding="utf-8")
@@ -87,13 +98,28 @@ try:
             te=""
             #for line in f:
             while True:
+                nospace=False
                 line= f.readline()
                 if line == "</pre></body></html>": break
                 #if "*** END OF THE PROJECT GUTENBERG" in line: break
                 #NOTE:cleanup
                 if not line or line.isspace(): continue
-                if "\n" in line:te+=" "+line[:-1]
-                else: te+=line
+                if "\n" in line:
+                    if nospace:
+                        te+=line[:-1]
+                        nospace=False
+                        continue
+                    if line[-2] == '-':
+                        nospace=True
+                    te+=" "+line[:-1]
+                else:
+                    if nospace:
+                        te+=line
+                        nospace=False
+                        continue
+                    if line[-1] == '-':
+                        nospace=True
+                    te+=line
                 te=cleanup(te)
                 
                 #NOTE:check for sentences
@@ -111,10 +137,13 @@ try:
                 #input("A")
         nowtime=time.time()-start_time
         prYellow( f"{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt} words" )
+        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt} words")
         cnt+=1
         #input("B")
         #break
 except Exception as e:
+    nowtime=time.time()-start_time
+    logger(printpath+'gutenburg_log.txt',   f"FAILLLLLLL PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt} words")
     prALERT(f"te:\t\t{te}")
     prALERT(f"words:\t\t{words}")
     prALERT(f"wrd:\t\t{wrd}")
