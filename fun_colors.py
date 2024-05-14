@@ -11,6 +11,10 @@ def prCyan(skk): print("\033[96m{}\033[00m" .format(skk))
 def prLightGray(skk): print("\033[97m{}\033[00m" .format(skk))
 def prBlack(skk): print("\033[98m{}\033[00m" .format(skk))
 
+
+#mine
+def prALERT(skk):print(Back.RED+skk+Style.RESET_ALL)
+
 def gdFL(fl): return f"{'{:.2f}'.format(float( fl ))}"
 
 import win32api
