@@ -20,3 +20,7 @@ This file also has additional functions to help with printing or finding the loc
 
 ### [Project Gutenburg](https://www.gutenberg.org/)
 Project Gutenburg is the oldest digital library, all books are public domain and [don't need permission for non-commercial use](https://www.gutenberg.org/policy/permission.html#:~:text=No%20permission%20is%20needed%20for,%E2%80%9CProject%20Gutenberg%E2%80%9D%20trademark%20included.)
+
+
+## Dictionary
+Each different way or location data was taken had to have its own way of filtering its data with the end goal of just having pure words added to an extremely long dictionary file. Finding ways of traversing files without using up unnessary allocated memory and edge cases were the main trouble. Particulary with the gutenburg dataset where edge cases had to take in consideration of over 300+ years of changes in english sentence structure and hickups in the data files when they were extracted.

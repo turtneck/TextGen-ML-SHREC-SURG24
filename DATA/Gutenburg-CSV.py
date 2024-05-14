@@ -23,9 +23,9 @@ from fun_colors import *
 filepath = getDrive()+"book\\gutenburg"
 print(f"DRIVE_DIR:\t\t<{filepath}>")
 printpath=filepath.split("\\")[0]+"\\"+filepath.split("\\")[1]+"\\"
-cnt=0;nospace=False
+nospace=False
 global word_cnt
-logger(printpath+'gutenburg_log.txt',   f"[!!!!!] START\t{str(datetime.datetime.now())}")
+logger(printpath+'gutenburg_log.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
@@ -33,7 +33,7 @@ clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&
 clean2=['***','?','!']#replace with '.'s
 clean3=['_']#replace space
 
-start=0
+start=31
 
 #///////////////////////////////////////////////////////////////
 def addword(str):
@@ -78,8 +78,8 @@ def cleanup(str):
 #///////////////////////////////////////////////////////////////
 
 dirlist=os.listdir(filepath)
-sze=len(dirlist[start:])
-
+sze=len(dirlist)
+cnt=start
 #open up all files
 try:
     for txtpath in dirlist[start:]:
