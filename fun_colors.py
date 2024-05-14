@@ -31,3 +31,11 @@ def getDrive(drivename="SURG24-ML_DATA"):
             if drivename == str(win32api.GetVolumeInformation(drive)[0]): return str(drive)
         except: pass
     return None
+
+def goodtime(tim):
+    str=""
+    if tim>86400: str+=f"{int(tim/86400)}d "; tim=tim%86400
+    if tim>3600: str+=f"{int(tim/3600)}h "; tim=tim%3600
+    if tim>60: str+=f"{int(tim/60)}m "; tim=tim%60
+    str+= gdFL(tim)+"s"
+    return str

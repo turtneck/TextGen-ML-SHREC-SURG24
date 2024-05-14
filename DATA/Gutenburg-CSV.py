@@ -26,10 +26,11 @@ printpath=filepath.split("\\")[0]+"\\"+filepath.split("\\")[1]+"\\"
 nospace=False #word-word between a new space consideration
 global word_cnt,word_tot
 logger(printpath+'gutenburg_log.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
+script_time=time.time()
 
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
-clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&','=','�','—','\t']#remove
+clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&','=','�','—','\t']#spaces
 clean2=['***','?','!']#replace with '.'s
 clean3=['_','|']#replace space
 
@@ -144,15 +145,15 @@ try:
                     te=te.split(".")[-1]
                 
                 #input("A")
-        nowtime=time.time()-start_time
-        prYellow( f"{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt} words" )
-        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words")
+        nowtime=time.time()
+        prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
         cnt+=1
         #input("B")
         #break
 except Exception as e:
-    nowtime=time.time()-start_time
-    logger(printpath+'gutenburg_log.txt',   f"FAILLLLLLL PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words")
+    nowtime=time.time()
+    logger(printpath+'gutenburg_log.txt',   f"FAILLLLLLL PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
     prALERT(f"te:\t\t{te}")
     prALERT(f"words:\t\t{words}")
     prALERT(f"wrd:\t\t{wrd}")
