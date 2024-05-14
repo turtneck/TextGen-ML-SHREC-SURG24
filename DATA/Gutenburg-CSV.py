@@ -23,7 +23,7 @@ from fun_colors import *
 filepath = getDrive()+"book\\gutenburg"
 print(f"DRIVE_DIR:\t\t<{filepath}>")
 printpath=filepath.split("\\")[0]+"\\"+filepath.split("\\")[1]+"\\"
-nospace=False
+nospace=False #word-word between a new space consideration
 global word_cnt
 logger(printpath+'gutenburg_log.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 
@@ -33,7 +33,7 @@ clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&
 clean2=['***','?','!']#replace with '.'s
 clean3=['_']#replace space
 
-start=31
+start=0
 
 #///////////////////////////////////////////////////////////////
 def addword(str):
@@ -83,7 +83,7 @@ cnt=start
 #open up all files
 try:
     for txtpath in dirlist[start:]:
-        word_cnt=0
+        word_cnt=0;nospace=False
         txt=filepath+"\\"+txtpath
         #sys.stdout.write(f'{Fore.CYAN}{txt}...'+Style.RESET_ALL)
         #prCyan(txt+"...")
@@ -98,9 +98,12 @@ try:
             te=""
             #for line in f:
             while True:
-                nospace=False
                 line= f.readline()
-                if line == "</pre></body></html>": break
+                if line == "</pre></body></html>":
+                    # words = [x for x in i.split(" ") if x]#remove empty spaces
+                    # for wrd in words:
+                    #     addword(wrd)
+                    break
                 #if "*** END OF THE PROJECT GUTENBERG" in line: break
                 #NOTE:cleanup
                 if not line or line.isspace(): continue
@@ -108,18 +111,18 @@ try:
                     if nospace:
                         te+=line[:-1]
                         nospace=False
-                        continue
-                    if line[-2] == '-':
+                    elif line[-2] == '-':
                         nospace=True
-                    te+=" "+line[:-1]
+                        te+=" "+line[:-1]
+                    else: te+=" "+line[:-1]
                 else:
                     if nospace:
                         te+=line
                         nospace=False
-                        continue
-                    if line[-1] == '-':
+                    elif line[-1] == '-':
                         nospace=True
-                    te+=line
+                        te+=line
+                    else: te+=line
                 te=cleanup(te)
                 
                 #NOTE:check for sentences
@@ -132,7 +135,6 @@ try:
                         for wrd in words:
                             addword(wrd)
                     te=te.split(".")[-1]
-                
                 
                 #input("A")
         nowtime=time.time()-start_time
