@@ -23,4 +23,6 @@ Project Gutenburg is the oldest digital library, all books are public domain and
 
 
 ## Dictionary
-Each different way or location data was taken had to have its own way of filtering its data with the end goal of just having pure words added to an extremely long dictionary file. Finding ways of traversing files without using up unnessary allocated memory and edge cases were the main trouble. Particulary with the gutenburg dataset where edge cases had to take in consideration of over 300+ years of changes in english sentence structure and hickups in the data files when they were extracted.
+Each different way or location data was taken had to have its own way of filtering its data with the end goal of just having pure words added to an extremely long dictionary file.
+Finding ways of traversing files without using up unnessary allocated memory, reducing runtime, and edge cases were the main trouble.
+Particulary with the gutenburg dataset where edge cases had to take in consideration of over 300+ years of changes in english sentence structure and hickups in the data files when they were extracted.
