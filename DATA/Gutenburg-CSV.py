@@ -24,21 +24,23 @@ filepath = getDrive()+"book\\gutenburg"
 print(f"DRIVE_DIR:\t\t<{filepath}>")
 printpath=filepath.split("\\")[0]+"\\"+filepath.split("\\")[1]+"\\"
 nospace=False #word-word between a new space consideration
-global word_cnt
+global word_cnt,word_tot
 logger(printpath+'gutenburg_log.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
 clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&','=','�','—','\t']#remove
 clean2=['***','?','!']#replace with '.'s
-clean3=['_']#replace space
+clean3=['_','|']#replace space
 
-start=0
+start=418
 
 #///////////////////////////////////////////////////////////////
 def addword(str):
     #NOTE: check if word in file
     inside=False
+    global word_cnt, word_tot
+    word_tot+=1
     
     #single
     if str[0] == "'" and str[-1] == "'": str=str[1:-1]
@@ -63,7 +65,6 @@ def addword(str):
     read_queue.close()
     #NOTE: if not inside, add to file
     if not inside:
-        global word_cnt
         word_cnt+=1
         read_queue= open(printpath+'gutenburg.txt','a', encoding="utf-8")
         read_queue.write(str.lower()+"\n")
@@ -83,7 +84,7 @@ cnt=start
 #open up all files
 try:
     for txtpath in dirlist[start:]:
-        word_cnt=0;nospace=False
+        word_cnt=0;word_tot=0;nospace=False
         txt=filepath+"\\"+txtpath
         #sys.stdout.write(f'{Fore.CYAN}{txt}...'+Style.RESET_ALL)
         #prCyan(txt+"...")
@@ -107,14 +108,20 @@ try:
                 #if "*** END OF THE PROJECT GUTENBERG" in line: break
                 #NOTE:cleanup
                 if not line or line.isspace(): continue
+                #remove starting spaces from line
+                nonspc=0
+                for i in range(len(line)):
+                    if line[i] != " ": nonspc=i;break
+                line=line[i:]               
                 if "\n" in line:
+                    line=line[:-1]
                     if nospace:
-                        te+=line[:-1]
+                        te+=line
                         nospace=False
-                    elif line[-2] == '-':
+                    elif line[-1] == '-':
                         nospace=True
-                        te+=" "+line[:-1]
-                    else: te+=" "+line[:-1]
+                        te+=" "+line
+                    else: te+=" "+line
                 else:
                     if nospace:
                         te+=line
@@ -139,13 +146,13 @@ try:
                 #input("A")
         nowtime=time.time()-start_time
         prYellow( f"{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt} words" )
-        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt} words")
+        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words")
         cnt+=1
         #input("B")
         #break
 except Exception as e:
     nowtime=time.time()-start_time
-    logger(printpath+'gutenburg_log.txt',   f"FAILLLLLLL PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt} words")
+    logger(printpath+'gutenburg_log.txt',   f"FAILLLLLLL PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{int(nowtime/60)}m {gdFL(nowtime%60)}s\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words")
     prALERT(f"te:\t\t{te}")
     prALERT(f"words:\t\t{words}")
     prALERT(f"wrd:\t\t{wrd}")
