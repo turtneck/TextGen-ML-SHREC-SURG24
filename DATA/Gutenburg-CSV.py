@@ -34,7 +34,7 @@ clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&
 clean2=['***','?','!']#replace with '.'s
 clean3=['_','|']#replace space
 
-start=418
+start=491
 
 #///////////////////////////////////////////////////////////////
 def addword(str):
@@ -146,14 +146,14 @@ try:
                 
                 #input("A")
         nowtime=time.time()
-        prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+        prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
         cnt+=1
         #input("B")
         #break
 except Exception as e:
     nowtime=time.time()
-    logger(printpath+'gutenburg_log.txt',   f"FAILLLLLLL PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(word_cnt/word_tot)}> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+    logger(printpath+'gutenburg_log.txt',   f"FAILLLLLLL PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
     prALERT(f"te:\t\t{te}")
     prALERT(f"words:\t\t{words}")
     prALERT(f"wrd:\t\t{wrd}")
