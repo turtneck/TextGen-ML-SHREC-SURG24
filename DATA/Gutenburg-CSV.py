@@ -24,23 +24,23 @@ filepath = getDrive()+"book\\gutenburg"
 print(f"DRIVE_DIR:\t\t<{filepath}>")
 printpath=filepath.split("\\")[0]+"\\"+filepath.split("\\")[1]+"\\"
 nospace=False #word-word between a new space consideration
-global word_cnt,word_tot
+global word_cnt,word_tot,last_word
 logger(printpath+'gutenburg_log.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 script_time=time.time()
 
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
-clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&','=','�','—','\t']#spaces
+clean=[',','--','---','[',']',';','*','™','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\']#spaces
 clean2=['***','?','!']#replace with '.'s
 clean3=['_','|']#replace space
 
-start=491
+start=0
 
 #///////////////////////////////////////////////////////////////
 def addword(str):
     #NOTE: check if word in file
     inside=False
-    global word_cnt, word_tot
+    global word_cnt, word_tot, last_word
     word_tot+=1
     
     #single
@@ -67,6 +67,7 @@ def addword(str):
     #NOTE: if not inside, add to file
     if not inside:
         word_cnt+=1
+        last_word=str.lower()
         read_queue= open(printpath+'gutenburg.txt','a', encoding="utf-8")
         read_queue.write(str.lower()+"\n")
         read_queue.close()
@@ -147,7 +148,8 @@ try:
                 #input("A")
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-        logger(printpath+'gutenburg_log.txt',   f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+        t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}..."
+        logger(printpath+'gutenburg_log.txt',   f"{t_str}{'.'*(55-len(t_str))}\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{last_word}")
         cnt+=1
         #input("B")
         #break
@@ -158,7 +160,7 @@ except Exception as e:
     prALERT(f"words:\t\t{words}")
     prALERT(f"wrd:\t\t{wrd}")
     prALERT(e)
-        
+
 #NOTE: write temp over to csv
 with open(printpath+"gutenburg.csv", 'w', encoding="utf-8") as csv_f:
     csv_f.write("word,acceptance\n")
