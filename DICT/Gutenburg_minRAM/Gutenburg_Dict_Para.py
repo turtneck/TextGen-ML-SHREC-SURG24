@@ -33,7 +33,7 @@ def partition(parts):
 def Gutenburg_dict(num=0,start=0,end=57587):
     prALERT(f"THREAD<<{num}<< STARTING")
     print(f"DRIVE_DIR:\t\t<{getDrive()+'book/gutenburg'}>")
-    printpath=(getDrive()+"book\\gutenburg").split("\\")[0]+"\\"+(getDrive()+"book\\gutenburg").split("\\")[1]+"\\"
+    printpath=(getDrive()+"book/")
 
     logger(printpath+f'gutenburg_log{num}.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
     script_time=time.time()

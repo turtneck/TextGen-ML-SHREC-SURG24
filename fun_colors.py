@@ -39,3 +39,10 @@ def goodtime(tim):
     if tim>60: str+=f"{int(tim/60)}m "; tim=tim%60
     str+= gdFL(tim)+"s"
     return str
+
+#if file doesnt exist, make it. otherwise dont effect it
+def file_helper(path):
+    t_file= open(path,'a', encoding="utf-8")
+    t_file.close()
+    del t_file
+    
