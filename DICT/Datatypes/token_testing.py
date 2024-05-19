@@ -169,3 +169,29 @@ print(len(data11))
 
 # mid = int((len(arr) - 1)/2)
 # print( np.concatenate(   ([arr[mid]],arr[:mid],arr[mid+1:]), axis=None    ) )
+
+
+
+
+with open(txt, 'r', encoding='utf-8') as f: data1 = f.read()
+for i in ['™']: data1=data1.replace(i,"")
+for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n']: data1=data1.replace(i," ")
+for i in ['***','?','!']: data1=data1.replace(i,".")
+for i in ['.\n', '. ']: data1=data1.replace(i," ")
+data1 = data1.split(" ")
+# indexes = np.unique(data1, return_index=True)[1]
+# data1 = [data1[index] for index in sorted(indexes)]
+
+res,ind = np.unique(data1, return_index=True)
+data1 = res[np.argsort(ind)]
+del res;del ind
+data11=[]
+for wrd in data1:
+    if wrd=='':continue
+    if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
+    elif wrd[0] == "'": wrd=wrd[1:]
+    elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
+    elif wrd[0] == "‘": wrd=wrd[1:]
+    data11.append(wrd)
+print(len(data11))
+print(data11)

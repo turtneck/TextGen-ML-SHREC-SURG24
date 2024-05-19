@@ -15,9 +15,9 @@ Some of this is overdone, this was done on purpose to be reused later in other m
 import csv,os,sys,time,numpy,datetime,multiprocessing
 import numpy as np
 #sys.path.append('D:/projects/base/app/modules') 
-dir_path = os.path.dirname(os.path.realpath(__file__))[:-5]
+dir_path = os.path.dirname(os.path.realpath(__file__))
 print(f"DIRECTORY:\t\t<{dir_path}>")
-sys.path.append(dir_path)
+sys.path.append(dir_path[:-5])
 from fun_colors import *
 
 #file path and global variables
@@ -27,8 +27,11 @@ printpath=(getDrive()+"book/")
 
 
 #loading past dict---------------------
-file_helper(printpath+f'gutenburg_dict_RAM+.bin')#if dict doesnt exist make it
-
+sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/Datatypes')
+from RBTree import RBT
+print(f"DICT_FILE:\t\t<{ printpath+'gutenDICT-RBT/gutenburg_dict-RBT.bin' }>")
+file_helper( printpath+'gutenDICT-RBT/gutenburg_dict-RBT.bin' )#if dict doesnt exist make it
+RBTree = RBT( printpath+'gutenDICT-RBT/gutenburg_dict-RBT.bin' )
 
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
@@ -44,7 +47,7 @@ try:
     for txtpath in dirlist:
         word_cnt=0;word_tot=0;last_word="";nospace=False
         txt=getDrive()+"book\\gutenburg"+"\\"+txtpath
-        prCyan(f"PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
+        prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
         
         
         #load whole data set into RAM (one big string) and format it down to words
@@ -54,31 +57,33 @@ try:
         for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n']: data=data.replace(i," ")
         for i in ['***','?','!']: data=data.replace(i,".")
         for i in ['.\n', '. ']: data=data.replace(i," ")
-        data= list(np.unique( data.split(" ") ))
-        data11=[]
+        data= data.split(" ")
+        word_tot = len(data)
+        word_cnt = RBTree.size
+        
+        res,ind = np.unique(data, return_index=True)
+        data = res[np.argsort(ind)]
+        del res;del ind
         for wrd in data:
             if wrd=='':continue
             if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
             elif wrd[0] == "'": wrd=wrd[1:]
             elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
             elif wrd[0] == "‘": wrd=wrd[1:]
-            data11.append(wrd)
-        data = data11.copy(); del data11
+            RBTree.insert(wrd)
         
-        
-        
-        
-                
+        word_cnt=RBTree.size-word_cnt
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-        t_str=f"PROG<> {start+cnt}/{end}: <{gdFL( 100*cnt/end )}%>\t{txt}..."
+        t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}..."
         logger(printpath+f'gutenburg_log.txt',   f"{t_str}{'.'*(55-len(t_str))}\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{last_word}")
         cnt+=1
-        #input("B")
-        #break
+        RBTree.save_tree(printpath+'gutenburg_dict-RBT.bin')
+        
+        
 except Exception as e:
     nowtime=time.time()
-    logger(printpath+f'gutenburg_log.txt',   f"FAILLLLLLL PROG<> {start+cnt}/{end}: <{gdFL( 100*cnt/end )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+    logger(printpath+f'gutenburg_log.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
     prALERT(f"te:\t\t{te}")
     prALERT(f"words:\t\t{words}")
     prALERT(f"wrd:\t\t{wrd}")

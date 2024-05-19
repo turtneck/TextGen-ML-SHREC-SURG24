@@ -6,7 +6,7 @@
 # Implementing Red-Black Tree in Python
 
 
-import sys,tiktoken,random
+import sys,tiktoken,random,os
 import numpy as np
 
 
@@ -20,14 +20,14 @@ class Node():
         self.red = True
 
 
-class RBTree():
+class RBT():
     def __init__(self, file=None):
         self.root = None
         self.arr=None
         self.str=None
         self.size=0
         
-        if file:
+        if file and os.path.getsize(file) > 0:
             decode = np.memmap(file, dtype=np.uint16, mode='r')
             data2 = tiktoken.get_encoding("gpt2").decode(decode)
             arr = data2.split(" ")
@@ -180,7 +180,7 @@ class RBTree():
 
 
 if __name__ == "__main__":
-    # bst = RBTree()
+    # bst = RBT()
 
     # bst.insert("a")
     # bst.insert("bb")
@@ -199,12 +199,12 @@ if __name__ == "__main__":
     #tried compressing to int, but was bigger as that
     import os
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    bst = RBTree(os.path.join(dir_path, 'RBT.bin'))
+    bst = RBT(os.path.join(dir_path, 'RBT.bin'))
     #bst.print_tree()
     
     bst.save_tree(os.path.join(dir_path, 'RBT2.bin'))
     
-    bst2 = RBTree(os.path.join(dir_path, 'RBT2.bin'))
+    bst2 = RBT(os.path.join(dir_path, 'RBT2.bin'))
     #bst2.print_tree()
     print(bst.size)
     print(bst2.size)
