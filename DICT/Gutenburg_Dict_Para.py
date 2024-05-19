@@ -27,7 +27,7 @@ def partition(parts):
     last=0
     for i in range(parts):
         arr.append([last,  int(part*(i+1)-1)  ])
-        last=int(part*i)
+        last=int(part*(i+1))
     return arr
 #------------------------
 def Gutenburg_dict(num=0,start=0,end=57587):
@@ -164,9 +164,16 @@ class guten_dict_thr:
         self.thread.start()
 
 if __name__ == "__main__":
-    # t1 = multiprocessing.Process(target=Gutenburg_dict, args=(0,    0,19195))
-    # t2 = multiprocessing.Process(target=Gutenburg_dict, args=(1,19196,38391))
-    # t3 = multiprocessing.Process(target=Gutenburg_dict, args=(2,38392,57587))
+    # t0 = multiprocessing.Process(target=Gutenburg_dict, args=(0,  302, 5757))
+    # t1 = multiprocessing.Process(target=Gutenburg_dict, args=(1,  296,11516))
+    # t2 = multiprocessing.Process(target=Gutenburg_dict, args=(2, 5972,57587))
+    # t3 = multiprocessing.Process(target=Gutenburg_dict, args=(3, 5972,57587))
+    # t4 = multiprocessing.Process(target=Gutenburg_dict, args=(4, 5972,57587))
+    # t5 = multiprocessing.Process(target=Gutenburg_dict, args=(5, 5972,57587))
+    # t6 = multiprocessing.Process(target=Gutenburg_dict, args=(6, 5972,57587))
+    # t7 = multiprocessing.Process(target=Gutenburg_dict, args=(7, 5972,57587))
+    # t8 = multiprocessing.Process(target=Gutenburg_dict, args=(8, 5972,57587))
+    # t9 = multiprocessing.Process(target=Gutenburg_dict, args=(9, 5972,57587))
 
     # prALERT("THREAD STARTING")
     # t1.start()
@@ -178,11 +185,10 @@ if __name__ == "__main__":
     # t3.join()
     
     num_threads=10
-    
     threads=[]
     list_arr=partition(num_threads)
+    print(list_arr)
     for thr in range(num_threads):
         threads.append(   guten_dict_thr(thr,list_arr[thr][0],list_arr[thr][1])   )
-        
     for thr in threads:
         thr.thread.join()
