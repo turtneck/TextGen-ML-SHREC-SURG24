@@ -33,29 +33,16 @@ class RBT():
         self.f = None
         
         if file:# and os.path.getsize(file) > 0:
-            if file[-3:] == 'bin':
-                print("BIN")
-                self.f=file[:-4]+"_t.txt"
-                file_wipe(self.f)
-                if os.path.getsize(file) > 0:
-                    # decode = np.memmap(file, dtype=np.uint16, mode='r')
-                    # data2 = tiktoken.get_encoding("gpt2").decode(decode)
-                    # arr = data2.split(" ")
-                    with open(file, 'rb') as f: arr = pickle.load(f)
-                    random.shuffle(arr)
-                    for wrd in arr:
-                        self.insert(wrd[0],wrd[1])
-                    # arr = data2.split(" ")
-                    # mid = int((len(arr) - 1)/2)
-                    # for wrd in np.concatenate(  ([arr[mid]],arr[:mid],arr[mid+1:]), axis=None  ): self.insert(wrd)
-            elif file[-3:] == 'txt':
-                print("TXT")
-                self.f=file[:-4]+"_t.txt"
-                file_wipe(self.f)
-                with open(file, 'r', encoding="utf-8") as f: data = f.readlines()
-                for line in data:
-                    if "\n" in line:line=line[:-1]
-                    self.insert(line)
+            self.f=file[:-4]+"_t.txt"
+            file_wipe(self.f)
+            if os.path.getsize(file) > 0:
+                # decode = np.memmap(file, dtype=np.uint16, mode='r')
+                # data2 = tiktoken.get_encoding("gpt2").decode(decode)
+                # arr = data2.split(" ")
+                with open(file, 'rb') as f: arr = pickle.load(f)
+                random.shuffle(arr)
+                for wrd in arr:
+                    self.insert(wrd[0],wrd[1])
             else: print("HA1")
         else: print("HA2")
         print(file)
