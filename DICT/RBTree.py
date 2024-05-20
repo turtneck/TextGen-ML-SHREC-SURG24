@@ -6,7 +6,7 @@
 # Implementing Red-Black Tree in Python
 
 
-import sys,tiktoken,random,os
+import sys,tiktoken,random,os,shutil,pickle
 import numpy as np
 dir_path = os.path.dirname(os.path.realpath(__file__))
 print(f"DIRECTORY:\t\t<{dir_path}>")
@@ -35,11 +35,12 @@ class RBT():
             if file[-3:] == 'bin':
                 print("BIN")
                 self.f=file[:-4]+"_t.txt"
+                file_wipe(self.f)
                 if os.path.getsize(file) > 0:
-                    file_wipe(self.f)
-                    decode = np.memmap(file, dtype=np.uint16, mode='r')
-                    data2 = tiktoken.get_encoding("gpt2").decode(decode)
-                    arr = data2.split(" ")
+                    # decode = np.memmap(file, dtype=np.uint16, mode='r')
+                    # data2 = tiktoken.get_encoding("gpt2").decode(decode)
+                    # arr = data2.split(" ")
+                    with open(file, 'rb') as f: arr = pickle.load(f)
                     random.shuffle(arr)
                     for wrd in arr:
                         self.insert(wrd)
@@ -194,9 +195,13 @@ class RBT():
             self.__print_helper(node.right, indent, True)
         
     def save_tree(self,file):
-        encode = tiktoken.get_encoding("gpt2").encode(self.inorder_str())
-        encode_ids = np.array(encode, dtype=np.uint16)
-        encode_ids.tofile(file)
+        # encode = tiktoken.get_encoding("gpt2").encode(self.inorder_str())
+        # encode_ids = np.array(encode, dtype=np.uint16)
+        # encode_ids.tofile(file)
+        # print(self.f)
+        # print(file)
+        with open(os.path.join(os.path.dirname(__file__), file), 'wb') as f:
+                pickle.dump(self.inorder_arr(), f)
     
         
         
@@ -214,6 +219,7 @@ if __name__ == "__main__":
     bst.insert("a")
 
     bst.print_tree()      
+    print(bst.inorder_arr())
         
     
     # # print(bst.inorder_arr())
@@ -225,10 +231,17 @@ if __name__ == "__main__":
     # # bst = RBT(os.path.join(dir_path, 'RBT.bin'))
     # #bst.print_tree()
     
-    # bst.save_tree(os.path.join(dir_path, 'RBT2.bin'))
+    bst.save_tree(os.path.join(dir_path, 'RBT2.bin'))
     
-    bst2 = RBT(os.path.join(dir_path, 'RBT3.txt'))
+    bst2 = RBT(os.path.join(dir_path, 'RBT2.bin'))
     bst2.print_tree()
-    print(bst2.inorder_str())
-    # print(bst.size)
-    print(bst2.size)
+    print(bst2.inorder_arr())
+    # print(bst2.inorder_str())
+    # # print(bst.size)
+    # print(bst2.size)
+    
+    bst2.save_tree(os.path.join(dir_path, 'RBT3.bin'))
+    
+    bst3 = RBT(os.path.join(dir_path, 'RBT3.bin'))
+    bst3.print_tree()
+    print(bst3.inorder_arr())

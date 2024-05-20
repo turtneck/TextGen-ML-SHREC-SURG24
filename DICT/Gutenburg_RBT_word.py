@@ -24,17 +24,18 @@ from fun_colors import *
 script_time=time.time()
 print(f"DRIVE_DIR:\t\t<{getDrive()+'book/gutenburg'}>")
 printpath=(getDrive()+"book/")
-file_helper( printpath+f'gutenburg_log-RBT.txt' )#if log doesnt exist make it
-logger(printpath+f'gutenburg_log-RBT.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
+file_helper( printpath+f'gutenburg_log-RBT-word.txt' )#if log doesnt exist make it
+logger(printpath+f'gutenburg_log-RBT-word.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 
 
 #loading past dict---------------------
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/Datatypes')
 from RBTree import RBT
-print(f"DICT_FILE:\t\t<{ printpath+'gutenDICT-RBT/gutenburg_dict-RBT.bin' }>")
-file_helper( printpath+'gutenDICT-RBT/gutenburg_dict-RBT.bin' )#if dict doesnt exist make it
-RBTree = RBT( printpath+'gutenDICT-RBT/gutenburg_dict-RBT.bin' )
+print(f"DICT_FILE:\t\t<{ printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word.bin' }>")
+file_helper( printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word.bin' )#if dict doesnt exist make it
+RBTree = RBT( printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word.bin' )
 
+dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}:{datetime.datetime.now().minute}"
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
 
@@ -76,20 +77,20 @@ try:
             RBTree.insert(wrd.lower())
         
         word_cnt=RBTree.size-word_cnt
-        # if cnt%100 ==0: RBTree.save_tree(printpath+'gutenDICT-RBT/gutenburg_dict-RBT_t.bin')
+        # if cnt%100 ==0: RBTree.save_tree(printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word_t.bin')
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-        t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}..."
-        logger(printpath+f'gutenburg_log-RBT.txt',   f"{t_str}{'.'*(55-len(t_str))}\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{last_word}")
+        t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>  {txt}..."
+        logger(printpath+f'gutenburg_log-RBT-word.txt',   f"{t_str}{'.'*(55-len(t_str))}\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{last_word}")
         cnt+=1
         
         
 except Exception as e:
     nowtime=time.time()
-    logger(printpath+f'gutenburg_log-RBT.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+    logger(printpath+f'gutenburg_log-RBT-word.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
     prALERT(f"data:\t\t{data}")
     prALERT(f"RBTree.size:\t\t{RBTree.size}")
-    RBTree.save_tree(printpath+'gutenburg_dict-RBT_FAIL.bin')
+    RBTree.save_tree(printpath+f'gutenburg_dict-RBT-word_FAIL__{dstr}.bin')
     prALERT(e)
 #///////////////////////////////////////////////////////////////
-
+RBTree.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-word__{dstr}.bin')

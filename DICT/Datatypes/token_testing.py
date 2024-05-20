@@ -28,7 +28,7 @@ from fun_colors import *
 #///////////////////////////////////////////////////////////////
 print(f"DRIVE_DIR:\t\t<{getDrive()+'book/gutenburg'}>")
 dirlist=os.listdir(getDrive()+"book\\gutenburg")
-txt=getDrive()+"book\\gutenburg"+"\\"+dirlist[1]
+txt=getDrive()+"book\\gutenburg"+"\\"+dirlist[0]
 print(txt)
 
 # with open(txt, 'r', encoding='utf-8') as f: data = f.read()
@@ -128,24 +128,24 @@ print(txt)
 
 
 #///////////////////////////////////////////////////////////////
-with open(txt, 'r', encoding='utf-8') as f: data1 = f.read()
-for i in ['™']: data1=data1.replace(i,"")
-for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n']: data1=data1.replace(i," ")
-for i in ['***','?','!']: data1=data1.replace(i,".")
-for i in ['.\n', '. ']: data1=data1.replace(i," ")
-data1= list(np.unique( data1.split(" ") ))
-data11=[]
-for wrd in data1:
-    if wrd=='':continue
-    if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
-    elif wrd[0] == "'": wrd=wrd[1:]
-    elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
-    elif wrd[0] == "‘": wrd=wrd[1:]
-    data11.append(wrd)
+# with open(txt, 'r', encoding='utf-8') as f: data1 = f.read()
+# for i in ['™']: data1=data1.replace(i,"")
+# for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n']: data1=data1.replace(i," ")
+# for i in ['***','?','!']: data1=data1.replace(i,".")
+# for i in ['.\n', '. ']: data1=data1.replace(i," ")
+# data1= list(np.unique( data1.split(" ") ))
+# data11=[]
+# for wrd in data1:
+#     if wrd=='':continue
+#     if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
+#     elif wrd[0] == "'": wrd=wrd[1:]
+#     elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
+#     elif wrd[0] == "‘": wrd=wrd[1:]
+#     data11.append(wrd)
 
-data = ' '.join(data11)
-# print(data)
-print(len(data11))
+# data = ' '.join(data11)
+# # print(data)
+# print(len(data11))
 
 # encode = enc.encode(data)
 # encode_ids = np.array(encode, dtype=np.uint16)
@@ -173,25 +173,60 @@ print(len(data11))
 
 
 
-with open(txt, 'r', encoding='utf-8') as f: data1 = f.read()
-for i in ['™']: data1=data1.replace(i,"")
-for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n']: data1=data1.replace(i," ")
-for i in ['***','?','!']: data1=data1.replace(i,".")
-for i in ['.\n', '. ']: data1=data1.replace(i," ")
-data1 = data1.split(" ")
-# indexes = np.unique(data1, return_index=True)[1]
-# data1 = [data1[index] for index in sorted(indexes)]
+# with open(txt, 'r', encoding='utf-8') as f: data1 = f.read()
+# for i in ['™']: data1=data1.replace(i,"")
+# for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n']: data1=data1.replace(i," ")
+# for i in ['***','?','!']: data1=data1.replace(i,".")
+# for i in ['.\n', '. ']: data1=data1.replace(i," ")
+# data1 = data1.split(" ")
+# # indexes = np.unique(data1, return_index=True)[1]
+# # data1 = [data1[index] for index in sorted(indexes)]
 
-res,ind = np.unique(data1, return_index=True)
-data1 = res[np.argsort(ind)]
+# res,ind = np.unique(data1, return_index=True)
+# data1 = res[np.argsort(ind)]
+# del res;del ind
+# data11=[]
+# for wrd in data1:
+#     if wrd=='':continue
+#     if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
+#     elif wrd[0] == "'": wrd=wrd[1:]
+#     elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
+#     elif wrd[0] == "‘": wrd=wrd[1:]
+#     data11.append(wrd)
+# print(len(data11))
+# print(data11)
+
+import datetime
+dt=datetime.datetime.now()
+print( str(datetime.datetime.now().ctime()).replace(" ","_") )
+print( f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}:{datetime.datetime.now().minute}" )
+
+import re
+with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
+
+res,ind = np.unique(data, return_index=True)
+data = res[np.argsort(ind)]
 del res;del ind
-data11=[]
-for wrd in data1:
-    if wrd=='':continue
-    if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
-    elif wrd[0] == "'": wrd=wrd[1:]
-    elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
-    elif wrd[0] == "‘": wrd=wrd[1:]
-    data11.append(wrd)
-print(len(data11))
-print(data11)
+
+d1=[]
+for wrd in data:
+    for i in ['™']: wrd=wrd.replace(i,"")
+    for i in ['“','”']: wrd=wrd.replace(i,'"')
+    for i in ['‘','’']: wrd=wrd.replace(i,"'")
+    for i in [',','--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
+    wrd= re.sub(' {2,}',' ',wrd)
+    if wrd in ['',' ',' \n','\n']: continue
+    d1.append(   wrd   )
+    for chr in wrd:
+        if len( enc.encode(chr) ) >1:print("BIGGG:",chr,enc.encode(chr))
+        if sys.getsizeof(enc.encode(chr)[0]) > sys.getsizeof(chr): print("FAILL:",chr,enc.encode(chr),sys.getsizeof(enc.encode(chr)[0]), sys.getsizeof(chr))
+        
+    
+data=d1
+data= ''.join(data)
+# print(data)
+
+file_helper('a.txt')
+open('a','w').write("hiiiiiiiiiiiiii")
+# open('a.txt', 'w').close()
+file_wipe('a.txt')

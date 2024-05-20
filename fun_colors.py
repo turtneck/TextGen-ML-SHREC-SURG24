@@ -48,4 +48,8 @@ def file_helper(path):
 def file_wipe(path):
     t_file= open(path,'w', encoding="utf-8")
     t_file.close()
-    
+
+def encode(s,stoi):
+    return [stoi[c] for c in s] # encoder: take a string, output a list of integers
+def decode(l,itos):
+    return ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
