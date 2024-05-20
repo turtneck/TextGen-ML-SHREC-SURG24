@@ -15,12 +15,13 @@ from fun_colors import *
 
 # Node creation
 class Node():
-    def __init__(self, item):
+    def __init__(self, item, value=0):
         self.item = item
         self.parent = None
         self.left = None
         self.right = None
         self.red = True
+        self.value=value
 
 
 class RBT():
@@ -43,7 +44,7 @@ class RBT():
                     with open(file, 'rb') as f: arr = pickle.load(f)
                     random.shuffle(arr)
                     for wrd in arr:
-                        self.insert(wrd)
+                        self.insert(wrd[0],wrd[1])
                     # arr = data2.split(" ")
                     # mid = int((len(arr) - 1)/2)
                     # for wrd in np.concatenate(  ([arr[mid]],arr[:mid],arr[mid+1:]), axis=None  ): self.insert(wrd)
@@ -127,13 +128,13 @@ class RBT():
         y.right = x
         x.parent = y
 
-    def insert(self, key):
-        node = Node(key)
+    def insert(self, key,value=0):
+        node = Node(key,value)
 
         y = None; x = self.root
         while x:
             y = x
-            if node.item == x.item: return
+            if node.item == x.item: x.value = x.value+1; return
             if node.item < x.item: x = x.left
             else: x = x.right
 
@@ -161,6 +162,19 @@ class RBT():
             self.inorder_arr_helper(node.left)
             self.arr.append(node.item)
             self.inorder_arr_helper(node.right)
+        
+    def inorder_arr_VAL(self):
+        self.arr=[]
+        self.inorder_arr_helper_VAL(self.root)
+        arr_c=self.arr.copy()
+        self.arr=None
+        return arr_c
+         
+    def inorder_arr_helper_VAL(self, node):
+        if node:
+            self.inorder_arr_helper_VAL(node.left)
+            self.arr.append([node.item,node.value])
+            self.inorder_arr_helper_VAL(node.right)
         
     def inorder_str(self):
         self.str=''
@@ -201,7 +215,7 @@ class RBT():
         # print(self.f)
         # print(file)
         with open(os.path.join(os.path.dirname(__file__), file), 'wb') as f:
-                pickle.dump(self.inorder_arr(), f)
+            pickle.dump(self.inorder_arr_VAL(), f)
     
         
         
@@ -215,11 +229,12 @@ if __name__ == "__main__":
     bst.insert("ccc")
     bst.insert("dddd")
     bst.insert("eeeee")
-    bst.insert("-")
+    bst.insert("-",3)
     bst.insert("a")
 
     bst.print_tree()      
     print(bst.inorder_arr())
+    print(bst.inorder_arr_VAL())
         
     
     # # print(bst.inorder_arr())
@@ -245,3 +260,4 @@ if __name__ == "__main__":
     bst3 = RBT(os.path.join(dir_path, 'RBT3.bin'))
     bst3.print_tree()
     print(bst3.inorder_arr())
+    print(bst3.inorder_arr_VAL())
