@@ -56,9 +56,9 @@ try:
         start_time=time.time()
         with open(getDrive()+"book\\gutenburg"+"\\"+txtpath, 'r', encoding="utf-8") as f: data = f.read()
         for i in ['™']: data=data.replace(i,"")
-        for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n']: data=data.replace(i," ")
+        for i in [',','--','---','[',']',';','*','•',':','"','“','”','(',')','&','=','�','—','\t','/','\\','_','|','<','>','\n','~']: data=data.replace(i," ")
         for i in ['***','?','!']: data=data.replace(i,".")
-        for i in ['.\n', '. ']: data=data.replace(i," ")
+        for i in ['.\n', '. ', '..',".'"]: data=data.replace(i," ")
         data= data.split(" ")
         word_tot = len(data)
         word_cnt = RBTree.size
@@ -68,14 +68,15 @@ try:
         del res;del ind
         for wrd in data:
             if wrd=='':continue
+            if wrd[0] == '-': wrd=wrd[1:]
             if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
             elif wrd[0] == "'": wrd=wrd[1:]
             elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
             elif wrd[0] == "‘": wrd=wrd[1:]
-            RBTree.insert(wrd)
+            RBTree.insert(wrd.lower())
         
         word_cnt=RBTree.size-word_cnt
-        RBTree.save_tree(printpath+'gutenDICT-RBT/gutenburg_dict-RBT_t.bin')
+        # if cnt%100 ==0: RBTree.save_tree(printpath+'gutenDICT-RBT/gutenburg_dict-RBT_t.bin')
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
         t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}..."

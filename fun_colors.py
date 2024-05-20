@@ -44,5 +44,8 @@ def goodtime(tim):
 def file_helper(path):
     t_file= open(path,'a', encoding="utf-8")
     t_file.close()
-    del t_file
+
+def file_wipe(path):
+    t_file= open(path,'w', encoding="utf-8")
+    t_file.close()
     

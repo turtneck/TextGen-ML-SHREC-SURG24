@@ -8,7 +8,10 @@
 
 import sys,tiktoken,random,os
 import numpy as np
-
+dir_path = os.path.dirname(os.path.realpath(__file__))
+print(f"DIRECTORY:\t\t<{dir_path}>")
+sys.path.append(dir_path[:-5])
+from fun_colors import *
 
 # Node creation
 class Node():
@@ -26,16 +29,35 @@ class RBT():
         self.arr=None
         self.str=None
         self.size=0
+        self.f = None
         
-        if file and os.path.getsize(file) > 0:
-            decode = np.memmap(file, dtype=np.uint16, mode='r')
-            data2 = tiktoken.get_encoding("gpt2").decode(decode)
-            arr = data2.split(" ")
-            random.shuffle(arr)
-            for wrd in arr: self.insert(wrd)
-            # arr = data2.split(" ")
-            # mid = int((len(arr) - 1)/2)
-            # for wrd in np.concatenate(  ([arr[mid]],arr[:mid],arr[mid+1:]), axis=None  ): self.insert(wrd)
+        if file:# and os.path.getsize(file) > 0:
+            if file[-3:] == 'bin':
+                print("BIN")
+                self.f=file[:-4]+"_t.txt"
+                if os.path.getsize(file) > 0:
+                    file_wipe(self.f)
+                    decode = np.memmap(file, dtype=np.uint16, mode='r')
+                    data2 = tiktoken.get_encoding("gpt2").decode(decode)
+                    arr = data2.split(" ")
+                    random.shuffle(arr)
+                    for wrd in arr:
+                        self.insert(wrd)
+                    # arr = data2.split(" ")
+                    # mid = int((len(arr) - 1)/2)
+                    # for wrd in np.concatenate(  ([arr[mid]],arr[:mid],arr[mid+1:]), axis=None  ): self.insert(wrd)
+            elif file[-3:] == 'txt':
+                print("TXT")
+                self.f=file[:-4]+"_t.txt"
+                file_wipe(self.f)
+                with open(file, 'r', encoding="utf-8") as f: data = f.readlines()
+                for line in data:
+                    if "\n" in line:line=line[:-1]
+                    self.insert(line)
+            else: print("HA1")
+        else: print("HA2")
+        print(file)
+                
         
 
     # Search the tree
@@ -115,6 +137,7 @@ class RBT():
             else: x = x.right
 
         self.size+=1
+        if self.f: logger(self.f, key)
         node.parent = y
         if y == None: self.root = node
         elif node.item < y.item: y.left = node
@@ -180,31 +203,32 @@ class RBT():
 
 
 if __name__ == "__main__":
-    # bst = RBT()
+    bst = RBT()
 
-    # bst.insert("a")
-    # bst.insert("bb")
-    # bst.insert("ccc")
-    # bst.insert("dddd")
-    # bst.insert("eeeee")
-    # bst.insert("-")
-    # bst.insert("a")
+    bst.insert("a")
+    bst.insert("bb")
+    bst.insert("ccc")
+    bst.insert("dddd")
+    bst.insert("eeeee")
+    bst.insert("-")
+    bst.insert("a")
 
-    # bst.print_tree()      
+    bst.print_tree()      
         
     
-    # print(bst.inorder_arr())
-    # print(bst.inorder_str())
+    # # print(bst.inorder_arr())
+    # # print(bst.inorder_str())
     
-    #tried compressing to int, but was bigger as that
-    import os
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    bst = RBT(os.path.join(dir_path, 'RBT.bin'))
-    #bst.print_tree()
+    # #tried compressing to int, but was bigger as that
+    # import os
+    # dir_path = os.path.dirname(os.path.realpath(__file__))
+    # # bst = RBT(os.path.join(dir_path, 'RBT.bin'))
+    # #bst.print_tree()
     
-    bst.save_tree(os.path.join(dir_path, 'RBT2.bin'))
+    # bst.save_tree(os.path.join(dir_path, 'RBT2.bin'))
     
-    bst2 = RBT(os.path.join(dir_path, 'RBT2.bin'))
-    #bst2.print_tree()
-    print(bst.size)
+    bst2 = RBT(os.path.join(dir_path, 'RBT3.txt'))
+    bst2.print_tree()
+    print(bst2.inorder_str())
+    # print(bst.size)
     print(bst2.size)
