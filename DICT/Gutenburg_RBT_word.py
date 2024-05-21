@@ -96,3 +96,4 @@ except Exception as e:
 if not fail:
     RBTree.save_tree(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-word__{dstr}.bin')
     RBTree.save_tree(printpath+'gutenDICT-RBT/char/gutenburg_dict-RBT-word.bin')
+    print( RBTree.inorder_arr_VAL() )
