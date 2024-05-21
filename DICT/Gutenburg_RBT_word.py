@@ -1,14 +1,10 @@
 '''
 BOILERPLATE:
 
-Reads from a bunch of .txt files in a directory and place the unique words in a csv file,
-this file is the "DICT_Queue" that needs to be *manually* picked apart if a word is "proper" for the dict model to train on.
+Reads from a bunch of .txt files in a directory and adds words to a Red-Black Tree, adding the frequency each word appears.
+Made specifically for the Gutenburg dataset.
 
-This does NOT check if a word is proper or has invalid characters inside the word.
-That is the work of the DICT model trained on this data.
-It will however filter out specific characters in the 'clean' list object that interupt the flow of characters.
-
-Some of this is overdone, this was done on purpose to be reused later in other models
+This method is RAM heavy, and 100000x faster then the 'minRAM' approach that tries to make RAM use a little as possible
 '''
 #///////////////////////////////////////////////////////////////
 #imports
@@ -31,11 +27,12 @@ logger(printpath+f'gutenburg_log-RBT-word.txt',   f"\n\n[!!!!!] START\t{str(date
 #loading past dict---------------------
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/Datatypes')
 from RBTree import RBT
-print(f"DICT_FILE:\t\t<{ printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word.bin' }>")
-file_helper( printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word.bin' )#if dict doesnt exist make it
-RBTree = RBT( printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word.bin' )
+print(f"DICT_FILE:\t\t<{ printpath+'gutenDICT-RBT/word/gutenburg_dict-RBT-word.bin' }>")
+file_helper( printpath+'gutenDICT-RBT/word/gutenburg_dict-RBT-word.bin' )#if dict doesnt exist make it
+RBTree = RBT( printpath+'gutenDICT-RBT/word/gutenburg_dict-RBT-word.bin' )
 
-dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}:{datetime.datetime.now().minute}"
+dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
+fail=False
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
 
@@ -47,7 +44,7 @@ sze=len(dirlist)
 cnt=start
 #open up all files
 try:
-    for txtpath in dirlist:
+    for txtpath in dirlist[start:]:
         word_cnt=0;word_tot=0;last_word="";nospace=False
         txt=getDrive()+"book\\gutenburg"+"\\"+txtpath
         prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
@@ -77,20 +74,25 @@ try:
             RBTree.insert(wrd.lower())
         
         word_cnt=RBTree.size-word_cnt
-        # if cnt%100 ==0: RBTree.save_tree(printpath+'gutenDICT-RBT/gutenburg_dict-RBT-word_t.bin')
+        # if cnt%100 ==0: RBTree.save_tree(printpath+'gutenDICT-RBT/word/gutenburg_dict-RBT-word_t.bin')
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
         t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>  {txt}..."
         logger(printpath+f'gutenburg_log-RBT-word.txt',   f"{t_str}{'.'*(55-len(t_str))}\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{last_word}")
         cnt+=1
-        
-        
+        #------------------
 except Exception as e:
+    fail=True
     nowtime=time.time()
     logger(printpath+f'gutenburg_log-RBT-word.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
     prALERT(f"data:\t\t{data}")
     prALERT(f"RBTree.size:\t\t{RBTree.size}")
-    RBTree.save_tree(printpath+f'gutenburg_dict-RBT-word_FAIL__{dstr}.bin')
+    RBTree.save_tree(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-word_FAIL__{dstr}.bin')
     prALERT(e)
+    
+    
+
 #///////////////////////////////////////////////////////////////
-RBTree.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-word__{dstr}.bin')
+if not fail:
+    RBTree.save_tree(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-word__{dstr}.bin')
+    RBTree.save_tree(printpath+'gutenDICT-RBT/char/gutenburg_dict-RBT-word.bin')

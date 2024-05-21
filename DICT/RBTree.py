@@ -219,32 +219,39 @@ if __name__ == "__main__":
     bst.insert("-",3)
     bst.insert("a")
 
-    bst.print_tree()      
-    print(bst.inorder_arr())
-    print(bst.inorder_arr_VAL())
+    # bst.print_tree()      
+    # print(bst.inorder_arr())
+    # print(bst.inorder_arr_VAL())
         
     
-    # # print(bst.inorder_arr())
-    # # print(bst.inorder_str())
+    # # # print(bst.inorder_arr())
+    # # # print(bst.inorder_str())
     
-    # #tried compressing to int, but was bigger as that
-    # import os
-    # dir_path = os.path.dirname(os.path.realpath(__file__))
-    # # bst = RBT(os.path.join(dir_path, 'RBT.bin'))
-    # #bst.print_tree()
+    # # #tried compressing to int, but was bigger as that
+    # # import os
+    # # dir_path = os.path.dirname(os.path.realpath(__file__))
+    # # # bst = RBT(os.path.join(dir_path, 'RBT.bin'))
+    # # #bst.print_tree()
     
-    bst.save_tree(os.path.join(dir_path, 'RBT2.bin'))
+    # bst.save_tree(os.path.join(dir_path, 'RBT2.bin'))
     
-    bst2 = RBT(os.path.join(dir_path, 'RBT2.bin'))
-    bst2.print_tree()
-    print(bst2.inorder_arr())
-    # print(bst2.inorder_str())
-    # # print(bst.size)
-    # print(bst2.size)
+    # bst2 = RBT(os.path.join(dir_path, 'RBT2.bin'))
+    # bst2.print_tree()
+    # print(bst2.inorder_arr())
+    # # print(bst2.inorder_str())
+    # # # print(bst.size)
+    # # print(bst2.size)
     
-    bst2.save_tree(os.path.join(dir_path, 'RBT3.bin'))
+    # bst2.save_tree(os.path.join(dir_path, 'RBT3.bin'))
     
-    bst3 = RBT(os.path.join(dir_path, 'RBT3.bin'))
-    bst3.print_tree()
-    print(bst3.inorder_arr())
-    print(bst3.inorder_arr_VAL())
+    # bst3 = RBT(os.path.join(dir_path, 'RBT3.bin'))
+    # bst3.print_tree()
+    # print(bst3.inorder_arr())
+    # print(bst3.inorder_arr_VAL())
+    import datetime
+    dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
+    printpath=(getDrive()+"book/")
+    # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr_FAIL__{dstr}.bin')
+    # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr__{dstr}.bin')
+    bst2= RBT( printpath+'gutenDICT-RBT/gutenburg_dict-RBT-chr__2024-05-20_21_45.bin' )
+    print(bst2.inorder_arr_VAL())
