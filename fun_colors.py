@@ -1,6 +1,7 @@
 # holder file for easier printing of colored terminal text for readibility
 # taken from: https://www.geeksforgeeks.org/print-colors-python-terminal/
 
+import pickle, win32api
 from colorama import Fore, Back, Style
 def prRed(skk): print("\033[91m{}\033[00m" .format(skk))
 def prGreen(skk): print("\033[92m{}\033[00m" .format(skk))
@@ -21,7 +22,6 @@ def logger(filepath,text):
     file.write(text+"\n")
     file.close()
 
-import win32api
 def getDrive(drivename="SURG24-ML_DATA"):
     drives = win32api.GetLogicalDriveStrings()
     dx = [x for x in drives.split("\000") if x]
@@ -53,3 +53,15 @@ def encode(s,stoi):
     return [stoi[c] for c in s] # encoder: take a string, output a list of integers
 def decode(l,itos):
     return ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
+
+def prev_RBT(file):
+    print(file)
+    with open(file, 'rb') as f: dat = pickle.load(f)
+    return dat
+        
+def sublist_sort(list_tb: list): #sort list of lists by 2nd element
+    list_tb.sort(key = lambda x: x[1], reverse=True)
+    return list_tb
+
+def sorted_RBT(file):
+    return sublist_sort(prev_RBT(file))

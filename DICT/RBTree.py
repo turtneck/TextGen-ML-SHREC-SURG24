@@ -55,38 +55,6 @@ class RBT():
         if key < node.item: return self.search_tree_helper(node.left, key)
         return self.search_tree_helper(node.right, key)
 
-    # Balance the tree after insertion
-    def fix_insert(self, k):
-        while k.parent.red:
-            if k.parent == k.parent.parent.right and k.parent.parent.left:
-                if k.parent.parent.left.red:
-                    k.parent.parent.left.red = False
-                    k.parent.red = False
-                    k.parent.parent.red = True
-                    k = k.parent.parent
-                else:
-                    if k == k.parent.left:
-                        k = k.parent
-                        self.right_rotate(k)
-                    k.parent.red = False
-                    k.parent.parent.red = True
-                    self.left_rotate(k.parent.parent)
-            else:
-                if k.parent.parent.right and k.parent.parent.right.red:
-                        k.parent.parent.right.red = False
-                        k.parent.red = False
-                        k.parent.parent.red = True
-                        k = k.parent.parent
-                else:
-                    if k == k.parent.right:
-                        k = k.parent
-                        self.left_rotate(k)
-                    k.parent.red = False
-                    k.parent.parent.red = True
-                    self.right_rotate(k.parent.parent)
-            if k == self.root: break
-        self.root.red = False
-
     def searchTree(self, k):
         return self.search_tree_helper(self.root, k)
 
@@ -136,6 +104,38 @@ class RBT():
         if node.parent.parent == None: return
 
         self.fix_insert(node)
+
+    # Balance the tree after insertion
+    def fix_insert(self, k):
+        while k.parent.red:
+            if k.parent == k.parent.parent.right and k.parent.parent.left:
+                if k.parent.parent.left.red:
+                    k.parent.parent.left.red = False
+                    k.parent.red = False
+                    k.parent.parent.red = True
+                    k = k.parent.parent
+                else:
+                    if k == k.parent.left:
+                        k = k.parent
+                        self.right_rotate(k)
+                    k.parent.red = False
+                    k.parent.parent.red = True
+                    self.left_rotate(k.parent.parent)
+            else:
+                if k.parent.parent.right and k.parent.parent.right.red:
+                        k.parent.parent.right.red = False
+                        k.parent.red = False
+                        k.parent.parent.red = True
+                        k = k.parent.parent
+                else:
+                    if k == k.parent.right:
+                        k = k.parent
+                        self.left_rotate(k)
+                    k.parent.red = False
+                    k.parent.parent.red = True
+                    self.right_rotate(k.parent.parent)
+            if k == self.root: break
+        self.root.red = False
         
     def inorder_arr(self):
         self.arr=[]
@@ -205,21 +205,16 @@ class RBT():
             pickle.dump(self.inorder_arr_VAL(), f)
     
         
-        
+
+    
+
 
 
 if __name__ == "__main__":
     bst = RBT()
 
-    bst.insert("a")
-    bst.insert("bb")
-    bst.insert("ccc")
-    bst.insert("dddd")
-    bst.insert("eeeee")
-    bst.insert("-",3)
-    bst.insert("a")
-
-    # bst.print_tree()      
+    for _ in range(7): bst.insert(random.randint(0,100))
+    bst.print_tree()
     # print(bst.inorder_arr())
     # print(bst.inorder_arr_VAL())
         
@@ -250,8 +245,15 @@ if __name__ == "__main__":
     # print(bst3.inorder_arr_VAL())
     import datetime
     dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
-    printpath=(getDrive()+"book/")
+    printpath=(getDrive()+"book/gutenDICT-RBT/")
     # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr_FAIL__{dstr}.bin')
     # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr__{dstr}.bin')
-    bst2= RBT( printpath+'gutenDICT-RBT/gutenburg_dict-RBT-chr__2024-05-20_21_45.bin' )
-    print(bst2.inorder_arr_VAL())
+    # bst2= RBT( printpath+file+'.bin' )
+    # print(bst2.inorder_arr_VAL())
+    
+    # type_dict="word"
+    # file="gutenburg_dict-RBT-word__2024-05-21_6_39"
+    # print( sorted_RBT(printpath+type_dict+'/'+file+'.bin')[:100] )
+    import math
+    print( -1*math.log(1))
+    print( -1*math.log(208449))
