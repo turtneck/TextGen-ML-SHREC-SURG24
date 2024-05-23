@@ -40,7 +40,7 @@ start=0
 
 #------------------------
 dirlist=os.listdir(getDrive()+"book\\gutenburg")
-sze=len(dirlist)
+sze=len(dirlist)-1
 cnt=start
 #open up all files
 try:
@@ -68,6 +68,7 @@ try:
             for i in [',','--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
             wrd= re.sub(' {2,}',' ',wrd)
             if wrd in ['',' ',' \n','\n']: continue
+            if len(wrd)<1: continue
             for chr in wrd: RBTree.insert(chr)
         
         word_cnt=RBTree.size-word_cnt

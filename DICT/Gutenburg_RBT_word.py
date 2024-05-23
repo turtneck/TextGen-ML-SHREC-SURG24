@@ -40,7 +40,7 @@ start=0
 
 #------------------------
 dirlist=os.listdir(getDrive()+"book\\gutenburg")
-sze=len(dirlist)
+sze=len(dirlist)-1
 cnt=start
 #open up all files
 try:
@@ -65,8 +65,9 @@ try:
         data = res[np.argsort(ind)]
         del res;del ind
         for wrd in data:
-            if wrd=='':continue
+            if wrd=='' or len(wrd)<1: continue
             if wrd[0] == '-': wrd=wrd[1:]
+            if wrd=='' or len(wrd)<1: continue
             if wrd[0] == "'" and wrd[-1] == "'": wrd=wrd[1:-1]
             elif wrd[0] == "'": wrd=wrd[1:]
             elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
@@ -87,13 +88,14 @@ except Exception as e:
     logger(printpath+f'gutenburg_log-RBT-word.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t+{word_cnt}/{word_tot} <{gdFL(100*word_cnt/word_tot)}%> words\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
     prALERT(f"data:\t\t{data}")
     prALERT(f"RBTree.size:\t\t{RBTree.size}")
-    RBTree.save_tree(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-word_FAIL__{dstr}.bin')
+    prALERT(f"wrd:\t\t<{wrd}> {len(wrd)} {len(wrd)<1}")
+    RBTree.save_tree(printpath+f'gutenDICT-RBT/word/gutenburg_dict-RBT-word_FAIL__{dstr}.bin')
     prALERT(e)
     
     
 
 #///////////////////////////////////////////////////////////////
 if not fail:
-    RBTree.save_tree(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-word__{dstr}.bin')
-    RBTree.save_tree(printpath+'gutenDICT-RBT/char/gutenburg_dict-RBT-word.bin')
+    RBTree.save_tree(printpath+f'gutenDICT-RBT/word/gutenburg_dict-RBT-word__{dstr}.bin')
+    RBTree.save_tree(printpath+'gutenDICT-RBT/word/gutenburg_dict-RBT-word.bin')
     print( RBTree.inorder_arr_VAL() )
