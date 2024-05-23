@@ -54,7 +54,7 @@ def encode(s,stoi):
 def decode(l,itos):
     return ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
 
-def prev_RBT(file):
+def load_RBT_Arr(file):
     print(file)
     with open(file, 'rb') as f: dat = pickle.load(f)
     return dat
@@ -64,4 +64,7 @@ def sublist_sort(list_tb: list): #sort list of lists by 2nd element
     return list_tb
 
 def sorted_RBT(file):
-    return sublist_sort(prev_RBT(file))
+    return sublist_sort(load_RBT_Arr(file))
+
+def sorted_byVAL(file):
+    return [item[0] for item in sublist_sort(load_RBT_Arr(file))]

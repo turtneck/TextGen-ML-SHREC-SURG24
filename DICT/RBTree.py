@@ -36,18 +36,24 @@ class RBT():
             self.f=file[:-4]+"_t.txt"
             file_wipe(self.f)
             if os.path.getsize(file) > 0:
-                # decode = np.memmap(file, dtype=np.uint16, mode='r')
-                # data2 = tiktoken.get_encoding("gpt2").decode(decode)
-                # arr = data2.split(" ")
-                with open(file, 'rb') as f: arr = pickle.load(f)
-                random.shuffle(arr)
-                for wrd in arr:
-                    self.insert(wrd[0],wrd[1])
+                #TODO: PROPER PLACEMENT OF ARRAY
+                # with open(file, 'rb') as f: arr = pickle.load(f)
+                arr = sorted_byVAL(file)
+                # random.shuffle(arr)
+                # for wrd in arr:
+                #     # self.insert(wrd[0],wrd[1])
+                #     self.insert(wrd)
+                self.balanced_arr_insert_helper(arr)
             else: print("HA1")
         else: print("HA2")
         print(file)
+    
+    def balanced_arr_insert_helper(self, arr):
+        if not arr: return None
+        self.insert( arr[int( (len(arr))/2 )] )
+        self.insert( self.balanced_arr_insert_helper( arr[:int( (len(arr))/2 )] ) )
+        self.insert( self.balanced_arr_insert_helper( arr[int( (len(arr))/2 )+1:] ) )
                 
-        
 
     # Search the tree
     def search_tree_helper(self, node, key):
@@ -84,6 +90,7 @@ class RBT():
         x.parent = y
 
     def insert(self, key,value=0):
+        if key is None: return
         node = Node(key,value)
 
         y = None; x = self.root
