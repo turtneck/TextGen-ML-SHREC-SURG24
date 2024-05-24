@@ -44,8 +44,8 @@ class RBT():
                 #     # self.insert(wrd[0],wrd[1])
                 #     self.insert(wrd)
                 self.balanced_arr_insert_helper(arr)
-            else: print("HA1")
-        else: print("HA2")
+            else: print("RBT: File doesn't exist, init'd empty")
+        else: print("RBT: Wasn't given file, init'd empty")
         print(file)
     
     def balanced_arr_insert_helper(self, arr):
@@ -250,17 +250,22 @@ if __name__ == "__main__":
     # bst3.print_tree()
     # print(bst3.inorder_arr())
     # print(bst3.inorder_arr_VAL())
-    import datetime
-    dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
-    printpath=(getDrive()+"book/gutenDICT-RBT/")
-    # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr_FAIL__{dstr}.bin')
-    # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr__{dstr}.bin')
+    # import datetime
+    # dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
+    # printpath=(getDrive()+"book/gutenDICT-RBT/char/")
+    # # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr_FAIL__{dstr}.bin')
+    # # bst.save_tree(printpath+f'gutenDICT-RBT/gutenburg_dict-RBT-chr__{dstr}.bin')
+    # file="gutenburg_dict-RBT-chr"
     # bst2= RBT( printpath+file+'.bin' )
-    # print(bst2.inorder_arr_VAL())
+    # # print(bst2.inorder_arr_VAL())
     
-    # type_dict="word"
-    # file="gutenburg_dict-RBT-word__2024-05-21_6_39"
-    # print( sorted_RBT(printpath+type_dict+'/'+file+'.bin')[:100] )
-    import math
-    print( -1*math.log(1))
-    print( -1*math.log(208449))
+    # # type_dict="word"
+    # # file="gutenburg_dict-RBT-word__2024-05-21_6_39"
+    # # print( sorted_RBT(printpath+type_dict+'/'+file+'.bin')[:100] )
+    # import math
+    # print( -1*math.log(1))
+    # print( -1*math.log(208449))
+    # print(sorted_byVAL(printpath+file+'.bin'))
+    
+    data = np.memmap("D:/book\gutenburg_BIN/GB_pg0.bin",dtype=np.uint16, mode='r')
+    print(data[0])

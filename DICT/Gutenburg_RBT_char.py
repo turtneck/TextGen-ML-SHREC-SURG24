@@ -68,7 +68,7 @@ try:
             for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
             wrd= re.sub(' {2,}',' ',wrd)
             #if wrd in ['',' ',' \n','\n']: continue
-            if len(wrd)<1: continue
+            if wrd=='' or len(wrd)<1: continue
             for chr in wrd: RBTree.insert(chr)
         
         word_cnt=RBTree.size-word_cnt

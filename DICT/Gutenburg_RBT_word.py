@@ -61,9 +61,9 @@ try:
         word_tot = len(data)
         word_cnt = RBTree.size
         
-        res,ind = np.unique(data, return_index=True)
-        data = res[np.argsort(ind)]
-        del res;del ind
+        # res,ind = np.unique(data, return_index=True)
+        # data = res[np.argsort(ind)]
+        # del res;del ind
         for wrd in data:
             if wrd=='' or len(wrd)<1: continue
             if wrd[0] == '-': wrd=wrd[1:]
@@ -72,6 +72,7 @@ try:
             elif wrd[0] == "'": wrd=wrd[1:]
             elif wrd[0] == "‘" and wrd[-1] == "’": wrd=wrd[1:-1]
             elif wrd[0] == "‘": wrd=wrd[1:]
+            if wrd=='' or len(wrd)<1: continue
             RBTree.insert(wrd.lower())
         
         word_cnt=RBTree.size-word_cnt

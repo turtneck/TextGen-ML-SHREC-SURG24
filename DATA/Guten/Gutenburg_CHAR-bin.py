@@ -17,7 +17,7 @@ logger(printpath+f'gutenburg_log-RBT-chr__BIN.txt',   f"\n\n[!!!!!] START\t{str(
 #------------------------
 #load dict as sorted list
 printpath=(getDrive()+"book/")
-arr= sorted_byVAL(printpath+f'gutenburg_log-RBT-chr.txt')
+arr= sorted_byVAL(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-chr.bin')
 print(arr[:25])
 
 
@@ -26,11 +26,13 @@ print(arr[:25])
 stoi = { ch:i for i,ch in enumerate(arr) }
 itos = { i:ch for i,ch in enumerate(arr) }
 
-meta = { 'vocab_size': len(arr), 'itos': itos, 'stoi': stoi, }
-with open(os.path.join(os.path.dirname(__file__), 'gutenburg_log-RBT-chr_meta.pkl'), 'wb') as f: pickle.dump(meta, f)
-with open(os.path.join(os.path.dirname(__file__), f'gutenburg_log-RBT-chr_meta__{dstr}.pkl'), 'wb') as f: pickle.dump(meta, f)
+meta = { 'vocab_size': len(arr), 'itos': itos, 'stoi': stoi, 'uint': 16 }
+with open(printpath+ 'gutenburg_BIN\metas\gutenburg_bin-RBT-chr_meta.pkl', 'wb') as f: pickle.dump(meta, f)
+with open(printpath+ f'gutenburg_BIN\metas\gutenburg_bin-RBT-chr_meta__{dstr}.pkl', 'wb') as f: pickle.dump(meta, f)
+del arr
 
-
+logger(printpath+f'gutenburg_log-RBT-chr__BIN.txt',   f"ENCODE/DECODE OVERHEAD:\t{ goodtime(time.time()-script_time) }")
+# print("\n\n",stoi);print("\n\n",itos)
 #------------------------
 #go through data set, converting each
 
@@ -41,12 +43,11 @@ start=0
 
 #------------------------
 dirlist=os.listdir(getDrive()+"book\\gutenburg")
-sze=len(dirlist)
+sze=len(dirlist)-1
 cnt=start
 #open up all files
 try:
     for txtpath in dirlist[start:]:
-        last_chr="";nospace=False
         txt=getDrive()+"book\\gutenburg"+"\\"+txtpath
         prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
         
@@ -64,19 +65,18 @@ try:
         data= re.sub(' {2,}',' ',data)
         train_ids = encode(data, stoi)
         train_ids = np.array(train_ids, dtype=np.uint16)
-        train_ids.tofile(getDrive()+f"book\\gutenburg_BIN\GB_pg{cnt}.bin")
+        train_ids.tofile(getDrive()+f"book\\gutenburg_BIN\char\GB_pg{int(txt[20:-4])}.bin")
         
         
         # if cnt%100 ==0: RBTree.save_tree(printpath+'gutenDICT-RBT/char/gutenburg_dict-RBT-chr_t.bin')
         nowtime=time.time()
-        prYellow( f"{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+        prYellow( f"{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{getDrive()+f'book/gutenburg_BIN/char/GB_pg{int(txt[20:-4])}.bin'}")
         t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>  {txt}..."
-        logger(printpath+f'gutenburg_log-RBT-chr__BIN.txt',   f"{t_str}{'.'*(56-len(t_str))}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{last_chr}")
+        logger(printpath+f'gutenburg_log-RBT-chr__BIN.txt',   f"{t_str}{'.'*(56-len(t_str))}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{getDrive()+f'book/gutenburg_BIN/char/GB_pg{int(txt[20:-4])}.bin'}")
         cnt+=1
         #------------------
 except Exception as e:
-    fail=True
     nowtime=time.time()
-    logger(printpath+f'gutenburg_log-RBT-chr__BIN.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+    logger(printpath+f'gutenburg_log-RBT-chr__BIN.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{getDrive()+f'book/gutenburg_BIN/char/GB_pg{int(txt[20:-4])}.bin'}")
     prALERT(f"data:\t\t{data}")
     prALERT(e)
