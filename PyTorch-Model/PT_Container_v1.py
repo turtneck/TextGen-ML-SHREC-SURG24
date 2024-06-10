@@ -55,6 +55,11 @@ class PT_model_v1:
             self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+        else:
+            self.model = torch.load(model_path)
+            self.model.eval()
+            self.m = self.model.to(self.device)
+            
     
     
     # ========================================
