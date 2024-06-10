@@ -17,7 +17,7 @@ from fun_colors import *
 
 #===============================================================================
 class PT_model_v1:
-    def __init__(self, meta_data, hyperparameters=[16,32,1.0,1000,10000,100,1e-3,200,64,4,4,0.0], model_path=None):
+    def __init__(self, meta_data, hyperparameters=[16,32,1.0,1000,30000,100,1e-3,200,64,4,4,0.0], model_path=None):
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -41,12 +41,12 @@ class PT_model_v1:
         self.stoi = meta['stoi']
         self.itos = meta['itos']
         self.vocab_size = meta['vocab_size']
-        if meta['int'] == 8: mdtype=np.int8
-        elif meta['int'] == 16: mdtype=np.int16
-        elif meta['int'] == 32: mdtype=np.int32
-        elif meta['int'] == 64: mdtype=np.int64
-        elif meta['int'] == 128: mdtype=np.int128
-        elif meta['int'] == 256: mdtype=np.int256
+        if meta['int'] == 8: self.mdtype=np.int8
+        elif meta['int'] == 16: self.mdtype=np.int16
+        elif meta['int'] == 32: self.mdtype=np.int32
+        elif meta['int'] == 64: self.mdtype=np.int64
+        elif meta['int'] == 128: self.mdtype=np.int128
+        elif meta['int'] == 256: self.mdtype=np.int256
         else: raise TypeError(f"unknown meta data type signed: {meta['int']}")
             
         # Model ---------------------
@@ -92,7 +92,7 @@ class PT_model_v1:
             prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             start_time=time.time()
             
-            train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
+            train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=self.mdtype) ).type(torch.long)
             
             #actual training
             for iter in range(self.max_iters):
