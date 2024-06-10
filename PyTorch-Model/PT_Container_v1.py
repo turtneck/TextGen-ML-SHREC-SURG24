@@ -11,13 +11,13 @@ sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
 
-
+PTV1_HYPER_DEF=[16,32,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 
 
 #===============================================================================
 class PT_model_v1:
-    def __init__(self, meta_data, hyperparameters=[16,32,1.0,1000,30000,100,1e-3,200,64,4,4,0.0], model_path=None):
+    def __init__(self, meta_data, hyperparameters=PTV1_HYPER_DEF, model_path=None):
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -35,6 +35,7 @@ class PT_model_v1:
         self.n_head =       hyperparameters[9]
         self.n_layer =      hyperparameters[10]
         self.dropout =      hyperparameters[11]
+        self.hyperparameters = hyperparameters
             
         # meta data ---------------------
         with open(meta_data, 'rb') as f: meta = pickle.load(f)
@@ -64,6 +65,11 @@ class PT_model_v1:
     
     # ========================================
     def save_model(self,dir_path):
+        torch.save(self.model, dir_path)
+    
+    
+    # ========================================
+    def load_model(self,dir_path):
         self.model = torch.load(dir_path)
         self.model.eval()
         self.m = self.model.to(self.device)
@@ -72,22 +78,28 @@ class PT_model_v1:
     # ========================================
     def run_model(self,length=2000):
         context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-        print(fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos))
+        return fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
     
     
     # ========================================
-    def train_model(self,dir_path,start=0):
+    def train_model(self,dir_path,savepath=None,logpath=None,start=0,end=None):
         prGreen(f'train_dir: {dir_path}')
+        prGreen(f'savepath: {savepath}')
         dirlist=os.listdir(dir_path)
         sze=len(dirlist)-1
         cnt=start
         
-        dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
-        script_time=time.time()
-        file_helper( getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{dstr}.txt' )#if log doesnt exist make it
-        logger(getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{dstr}.txt',   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
+        if end: dirlist=dirlist[start:end]
+        else: dirlist=dirlist[start:]
         
-        for txtpath in dirlist[start:]:
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        prGreen(f'logpath: {logpath}')
+        script_time=time.time()
+        file_helper( logpath )#if log doesnt exist make it
+        logger(logpath,   f"{self.hyperparameters}")
+        logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
+        
+        for txtpath in dirlist:
             txt=dir_path+"\\"+txtpath
             prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             start_time=time.time()
@@ -101,7 +113,7 @@ class PT_model_v1:
                     losses = self.estimate_loss(train_data_torch)
                     nowtime=time.time()
                     prYellow(f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                    logger(getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{dstr}.txt',   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                 # sample a batch of data
                 xb, yb = self.get_batch(train_data_torch)
@@ -115,13 +127,14 @@ class PT_model_v1:
             #post
             nowtime=time.time()
             prPurple(f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{dstr}.txt',   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
-            self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.pt')
+            if savepath: self.save_model(savepath)
+            else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.pt')
             nowtime=time.time()
-            prLightGray(f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{dstr}.txt',   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            prLightPurple(f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             cnt+=1
             
     #==========================================================
@@ -239,6 +252,7 @@ class BigramLanguageModel(nn.Module):
     def __init__(self, device, vocab_size, block_size, n_embd, n_head, n_layer, dropout):
         super().__init__()
         self.device = device
+        self.block_size = block_size
         # each token directly reads off the logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
@@ -271,7 +285,7 @@ class BigramLanguageModel(nn.Module):
         # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
             # crop idx to the last block_size tokens
-            idx_cond = idx[:, -block_size:]
+            idx_cond = idx[:, -self.block_size:]
             # get the predictions
             logits, loss = self(idx_cond)
             # focus only on the last time step
