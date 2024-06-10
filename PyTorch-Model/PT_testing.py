@@ -237,52 +237,102 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
 
-model = BigramLanguageModel()
-m = model.to(device)
-# print the number of parameters in the model
-print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
-
-# create a PyTorch optimizer
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-
-for iter in range(max_iters):
-
-    # every once in a while evaluate the loss on train and val sets
-    if iter % eval_interval == 0 or iter == max_iters - 1:
-        losses = estimate_loss()
-        print(f"step {iter}: train loss {losses:.4f}")
-
-    # sample a batch of data
-    xb, yb = get_batch()
-
-    # evaluate the loss
-    logits, loss = model(xb, yb)
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
 
 
-# ------------------
-# save model
-print("\n\n///////////////////////////////////////////////////////////////\nSAVING...\n")
-import datetime
-dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
-torch.save(model, dir_path+f'/Models/PyTorch_{dstr}.pt')
+# =========================================================
+typ=  1
 
 
-# ------------------
-# generate from the model
-print("\n\n///////////////////////////////////////////////////////////////\nGENERATING...\n")
-context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(fun_decode(m.generate(context, max_new_tokens=2000)[0].tolist(),itos))
+# ========================
+if typ==0:
+    # ------------------
+    model = BigramLanguageModel()
+    m = model.to(device)
+    # print the number of parameters in the model
+    print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
+
+    # create a PyTorch optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    # ------------------
+    for iter in range(max_iters):
+        # every once in a while evaluate the loss on train and val sets
+        if iter % eval_interval == 0 or iter == max_iters - 1:
+            losses = estimate_loss()
+            print(f"step {iter}: train loss {losses:.4f}")
+
+        # sample a batch of data
+        xb, yb = get_batch()
+
+        # evaluate the loss
+        logits, loss = model(xb, yb)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+    # ------------------
+    # save model
+    print("\n\n///////////////////////////////////////////////////////////////\nSAVING...\n")
+    import datetime
+    dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
+    torch.save(model, dir_path+f'/Models/PyTorch_{dstr}.pt')
 
 
-# ------------------
-#reload model test
-print("\n\n///////////////////////////////////////////////////////////////\nLOADING...\n")
-model2 = torch.load(dir_path+f'/Models/PyTorch_{dstr}.pt')
-model2.eval()
+    # ------------------
+    # generate from the model
+    print("\n\n///////////////////////////////////////////////////////////////\nGENERATING...\n")
+    context = torch.zeros((1, 1), dtype=torch.long, device=device)
+    print(fun_decode(m.generate(context, max_new_tokens=2000)[0].tolist(),itos))
 
-print("\n\n///////////////////////////////////////////////////////////////\nGENERATING2...\n")
-m2 = model2.to(device)
-print(fun_decode(m2.generate(context, max_new_tokens=2000)[0].tolist(),itos))
+
+    # ------------------
+    #reload model test
+    print("\n\n///////////////////////////////////////////////////////////////\nLOADING...\n")
+    model2 = torch.load(dir_path+f'/Models/PyTorch_{dstr}.pt')
+    model2.eval()
+
+    print("\n\n///////////////////////////////////////////////////////////////\nGENERATING2...\n")
+    m2 = model2.to(device)
+    print(fun_decode(m2.generate(context, max_new_tokens=2000)[0].tolist(),itos))
+
+# ========================
+else:
+    # ------------------
+    #reload model test
+    print("\n\n///////////////////////////////////////////////////////////////\nLOADING...\n")
+    model = torch.load(dir_path+f'/Models/PyTorch_2024-06-10_2_18.pt')
+    model.eval()
+    m = model.to(device)
+
+
+    # ------------------
+    print("\n\n///////////////////////////////////////////////////////////////\nTRAINING...\n")
+    print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
+
+    # create a PyTorch optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    for iter in range(max_iters):
+        # every once in a while evaluate the loss on train and val sets
+        if iter % eval_interval == 0 or iter == max_iters - 1:
+            losses = estimate_loss()
+            print(f"step {iter}: train loss {losses:.4f}")
+        # sample a batch of data
+        xb, yb = get_batch()
+        # evaluate the loss
+        logits, loss = model(xb, yb)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        
+        
+    # ------------------
+    # save model
+    print("\n\n///////////////////////////////////////////////////////////////\nSAVING...\n")
+    import datetime
+    dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
+    torch.save(model, dir_path+f'/Models/PyTorch_{dstr}.pt')
+    
+
+    # ------------------
+    print("\n\n///////////////////////////////////////////////////////////////\nGENERATING...\n")
+    context = torch.zeros((1, 1), dtype=torch.long, device=device)
+    print(fun_decode(m.generate(context, max_new_tokens=2000)[0].tolist(),itos))
+    
