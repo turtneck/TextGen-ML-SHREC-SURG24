@@ -47,39 +47,42 @@ torch.manual_seed(1337)
 
 #------------------------
 #dict and training data
-dict_arr = np.array( sorted_byVAL(getDrive()+'book/gutenDICT-RBT/char/gutenburg_dict-RBT-chr.bin') )
-vocab_size = len(dict_arr)
-print(vocab_size)
+# dict_arr = np.array( sorted_byVAL(getDrive()+'book/gutenDICT-RBT/char/gutenburg_dict-RBT-char.bin') )
+# vocab_size = len(dict_arr)
+# print(vocab_size)
 
-BINdir=getDrive()+"book\\gutenburg_BIN\\char"
+BINdir=getDrive()+"book\\gutenburg_BIN\\char_64"
 dirlist=os.listdir(BINdir)
-train_data = np.fromfile(BINdir+'/'+dirlist[0], dtype=np.int32)
+print( BINdir+'/'+dirlist[0] )
+train_data = np.fromfile(BINdir+'/'+dirlist[0], dtype=np.int64)
 
-train_data_torch = torch.from_numpy(train_data)
-print(train_data_torch.dtype)
+train_data_torch = torch.from_numpy(train_data).type(torch.long)
+print( 'train_data_torch.dtype', train_data_torch.dtype )
+print( 'train_data_torch.type()', train_data_torch.type() )
 
-print( dict_arr )
-print( train_data )
+# print( dict_arr )
+# print( 'train_data', train_data[:200] )
 
 #meta
 #meta = { 'vocab_size': len(arr), 'itos': itos, 'stoi': stoi, 'uint': 32 }
-with open(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-chr_meta.pkl", 'rb') as f: meta = pickle.load(f)
+with open(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl", 'rb') as f: meta = pickle.load(f)
 
 stoi = meta['stoi']
 itos = meta['itos']
-encode = lambda s: [stoi[c] for c in s] # encoder: take a string, output a list of integers
-decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
+vocab_size = meta['vocab_size']
 
-print( meta['vocab_size'] == len(dict_arr))
+# print( meta['vocab_size'] == len(dict_arr))
+# print( fun_decode(fun_encode( 'hello.test',stoi),itos) )
+# print( fun_decode(train_data,itos)[:200] )
 
-input('ready??????')
+# input('ready??????')
 
 #------------------------
 # data loading
 def get_batch():
     try:
         # generate a small batch of data of inputs x and targets y
-        data = train_data# if split == 'train' else dict_arr
+        data = train_data_torch# if split == 'train' else dict_arr
         ix = torch.randint(len(data) - block_size, (batch_size,))
         x = torch.stack([data[i:i+block_size] for i in ix])
         y = torch.stack([data[i+1:i+block_size+1] for i in ix])
@@ -258,6 +261,28 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
 
+
+# ------------------
+# save model
+print("\n\n///////////////////////////////////////////////////////////////\nSAVING...\n")
+import datetime
+dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
+torch.save(model, dir_path+f'/Models/PyTorch_{dstr}.pt')
+
+
+# ------------------
 # generate from the model
+print("\n\n///////////////////////////////////////////////////////////////\nGENERATING...\n")
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
+print(fun_decode(m.generate(context, max_new_tokens=2000)[0].tolist(),itos))
+
+
+# ------------------
+#reload model test
+print("\n\n///////////////////////////////////////////////////////////////\nLOADING...\n")
+model2 = torch.load(dir_path+f'/Models/PyTorch_{dstr}.pt')
+model2.eval()
+
+print("\n\n///////////////////////////////////////////////////////////////\nGENERATING2...\n")
+m2 = model2.to(device)
+print(fun_decode(m2.generate(context, max_new_tokens=2000)[0].tolist(),itos))

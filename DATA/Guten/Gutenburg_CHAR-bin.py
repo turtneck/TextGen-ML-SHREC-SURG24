@@ -47,7 +47,7 @@ sze=len(dirlist)-1
 cnt=start
 #open up all files
 try:
-    for txtpath in dirlist[start:]:
+    for txtpath in dirlist[start:1]:
         txt=getDrive()+"book\\gutenburg"+"\\"+txtpath
         prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
         
@@ -55,7 +55,7 @@ try:
         #load whole data set into RAM (one big string) and format it down to chars
         start_time=time.time()
         with open(getDrive()+"book\\gutenburg"+"\\"+txtpath, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
-        data = ' '.join(data)
+        data = ''.join(data)
         
         #cleanup
         for i in ['™']: data=data.replace(i,"")
@@ -63,8 +63,11 @@ try:
         for i in ['‘','’']: data=data.replace(i,"'")
         for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
         data= re.sub(' {2,}',' ',data)
-        train_ids = encode(data, stoi)
+        print( 'AHHH0\n', data[:200] )
+        train_ids = fun_encode(data, stoi)
+        print( 'AHHH1\n', train_ids[:200] )
         train_ids = np.array(train_ids, dtype=np.int64)
+        print( 'AHHH2\n', train_ids[:200] )
         train_ids.tofile(getDrive()+f"book\\gutenburg_BIN\char_64\GB_pg{int(txt[20:-4])}.bin")
         
         
@@ -78,5 +81,5 @@ try:
 except Exception as e:
     nowtime=time.time()
     logger(printpath+f'gutenburg_log-RBT-char__BIN.txt',   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME\t{getDrive()+f'book/gutenburg_BIN/char/GB_pg{int(txt[20:-4])}.bin'}")
-    prALERT(f"data:\t\t{data}")
+    # prALERT(f"data:\t\t{data}")
     prALERT(e)

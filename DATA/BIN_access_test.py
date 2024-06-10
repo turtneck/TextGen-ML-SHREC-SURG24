@@ -17,18 +17,18 @@ from fun_colors import *
 #------------------------
 #load dict as sorted list
 printpath=(getDrive()+"book/")
-arr= sorted_byVAL(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-chr.bin')
+arr= sorted_byVAL(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-char.bin')
 # print(arr)
 
 
 #------------------------
 #load meta
 #meta = { 'vocab_size': len(arr), 'itos': itos, 'stoi': stoi, 'uint': 32 }
-with open(printpath+ 'gutenburg_BIN\metas\gutenburg_bin-RBT-chr_meta.pkl', 'rb') as f: meta = pickle.load(f)
+with open(printpath+ 'gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl', 'rb') as f: meta = pickle.load(f)
 print(meta['vocab_size'])
-print(meta['uint'])
-print(np.array(meta['itos']))
-print(np.array(meta['stoi']))
+print(meta['int'])
+# print(np.array(meta['itos']))
+# print(np.array(meta['stoi']))
 
 #///////////////////////////////////////////////////////////////
 #NOTE: manuals
@@ -36,16 +36,16 @@ print(np.array(meta['stoi']))
 start=0
 
 #------------------------
-BINdir=getDrive()+"book\\gutenburg_BIN\\char"
+BINdir=getDrive()+"book\\gutenburg_BIN\\char_64"
 dirlist=os.listdir(BINdir)
 sze=len(dirlist)-1
 cnt=start
 # print(dirlist[start:])
 #open up all files
-input('Ready for spam???')
+# input('Ready for spam???')
 try:
-    for txtpath in dirlist[start:]:
-        dat = np.fromfile(BINdir+'/'+txtpath, dtype=np.uint32)
+    for txtpath in dirlist[start:1]:
+        dat = np.fromfile(BINdir+'/'+txtpath, dtype=np.int64)
         print(txtpath, dat, len(dat))
 except Exception as e:
     prALERT(f"wrd_e:\t\t<{txtpath}>")
