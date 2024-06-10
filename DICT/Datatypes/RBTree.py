@@ -10,7 +10,7 @@ import sys,tiktoken,random,os,shutil,pickle
 import numpy as np
 dir_path = os.path.dirname(os.path.realpath(__file__))
 print(f"DIRECTORY:\t\t<{dir_path}>")
-sys.path.append(dir_path[:-5])
+sys.path.append(dir_path[:-15])
 from fun_colors import *
 
 # Node creation
@@ -267,5 +267,5 @@ if __name__ == "__main__":
     # print( -1*math.log(208449))
     # print(sorted_byVAL(printpath+file+'.bin'))
     
-    data = np.memmap("D:/book\gutenburg_BIN/GB_pg0.bin",dtype=np.uint16, mode='r')
+    data = np.memmap("D:/book/gutenburg_BIN/char/GB_pg1.bin",dtype=np.uint16, mode='r')
     print(data[0])
