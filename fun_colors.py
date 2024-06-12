@@ -1,7 +1,7 @@
 # holder file for easier printing of colored terminal text for readibility
 # taken from: https://www.geeksforgeeks.org/print-colors-python-terminal/
 
-import pickle, win32api
+import pickle, win32api,datetime
 from colorama import Fore, Back, Style
 def prRed(skk): print("\033[91m{}\033[00m" .format(skk))
 def prGreen(skk): print("\033[92m{}\033[00m" .format(skk))
@@ -68,3 +68,18 @@ def sorted_RBT(file):
 
 def sorted_byVAL(file):
     return [item[0] for item in sublist_sort(load_RBT_Arr(file))]
+
+def rgb(minimum, maximum, value):
+    ratio = 2 * (value-minimum) / (maximum - minimum)
+    b = max(0, (1 - ratio))
+    r = max(0, (ratio - 1))
+    g = 1-b-r
+    return (r, g, b)
+
+def datestr():
+    return f'{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}'
+
+def mean(arr):
+    tot=0
+    for i in arr:tot+=i
+    return tot/len(arr)
