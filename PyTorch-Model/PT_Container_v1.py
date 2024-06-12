@@ -82,7 +82,7 @@ class PT_model_v1:
     
     
     # ========================================
-    def train_model(self,dir_path,savepath=None,logpath=None,start=0,end=None):
+    def train_model(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
         dirlist=os.listdir(dir_path)
@@ -101,7 +101,7 @@ class PT_model_v1:
         
         for txtpath in dirlist:
             txt=dir_path+"\\"+txtpath
-            prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
+            prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             start_time=time.time()
             
             train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=self.mdtype) ).type(torch.long)
@@ -112,7 +112,7 @@ class PT_model_v1:
                 if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
                     losses = self.estimate_loss(train_data_torch)
                     nowtime=time.time()
-                    prYellow(f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    prYellow(add_message+f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                 # sample a batch of data
@@ -126,14 +126,14 @@ class PT_model_v1:
                 if losses <= self.goal: break
             #post
             nowtime=time.time()
-            prPurple(f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
             if savepath: self.save_model(savepath)
             else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.pt')
             nowtime=time.time()
-            prLightPurple(f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             cnt+=1
             
