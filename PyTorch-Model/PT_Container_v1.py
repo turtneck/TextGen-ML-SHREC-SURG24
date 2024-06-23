@@ -11,7 +11,7 @@ sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
 
-PTV1_HYPER_DEF=[16,32,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
+PTV1_HYPER_DEF=[24,32,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 
 
@@ -21,7 +21,8 @@ class PT_model_v1:
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        
+        if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
+                    
         # hyperparameters ---------------------
         self.batch_size =   hyperparameters[0] # how many independent sequences will we process in parallel?
         self.block_size =   hyperparameters[1] # what is the maximum context length for predictions?
@@ -49,17 +50,27 @@ class PT_model_v1:
         elif meta['int'] == 128: self.mdtype=np.int128
         elif meta['int'] == 256: self.mdtype=np.int256
         else: raise TypeError(f"unknown meta data type signed: {meta['int']}")
+        prGreen(hyperparameters)
             
         # Model ---------------------
         if model_path == None:
-            prGreen(hyperparameters)
+            #make new model
+            if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
+        
             self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+            
+            print(Back.GREEN+"SUCCESS: MODEL CREATED"+Style.RESET_ALL)
         else:
+            #load model from file
+            prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
             self.model = torch.load(model_path)
             self.model.eval()
             self.m = self.model.to(self.device)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+            
+            print(Back.GREEN+"SUCCESS: MODEL LOADED"+Style.RESET_ALL)
             
     
     
@@ -96,7 +107,8 @@ class PT_model_v1:
         prGreen(f'logpath: {logpath}')
         script_time=time.time()
         file_helper( logpath )#if log doesnt exist make it
-        logger(logpath,   f"{self.hyperparameters}")
+        if self.hyperparameters: logger(logpath,   f"{self.hyperparameters}")
+        else: logger(logpath,   f"No hyperparameters given during objects INIT")
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
         for txtpath in dirlist:
@@ -112,7 +124,7 @@ class PT_model_v1:
                 if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
                     losses = self.estimate_loss(train_data_torch)
                     nowtime=time.time()
-                    prYellow(add_message+f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/self.max_iters )}%>  step {iter}/{self.max_iters}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                 # sample a batch of data
@@ -130,8 +142,8 @@ class PT_model_v1:
             logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
-            if savepath: self.save_model(savepath)
-            else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.pt')
+            if savepath: self.save_model(savepath+f'PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
             nowtime=time.time()
             prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
