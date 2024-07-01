@@ -116,7 +116,12 @@ class PT_model_v1:
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             start_time=time.time()
             
-            train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=self.mdtype) ).type(torch.long)
+            print( txtpath[-4:] )
+            if txtpath[-4:] == '.txt':
+                print("ahhhhhh")
+                with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
+                train_data_torch = fun_encode(data, self.stoi)
+            elif txtpath[-4:] == '.bin': train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
             
             #actual training
             for iter in range(self.max_iters):
