@@ -237,6 +237,7 @@ class PT_model_v1:
         for txtpath in dirlist:
             txt=dir_path+'/'+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
+            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
             
             print( txtpath[-4:] )
@@ -328,9 +329,20 @@ print("tot ML class pass")
 
 
 #==========================================================
-start=14
-r=range(1,33)
-for i in r[start-1:]:
-    mod = PT_model_v1(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl",[i,32,0.0,1000,30000,100,1e-3,200,64,4,4,0.0])
-    mod.train_model(getDrive()+"book\\gutenburg_BIN\\char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_{i}.txt',end=1,add_message=f'tot {i}/{len(r)}: <{gdFL( 100*(i-1)/len(r) )}%>\t')
-    logger(getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_{i}.txt',    '\n\n'+mod.run_model() )
+VERSION = '1'
+THREADS = 24 #ADJUST
+
+MODEL = PT_model_v1(meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl")
+print("Model create pass")
+                    
+#------------------------
+#!! running
+prRed(f'TRAINING LEN: {len(os.listdir(getDrive()+"book/gutenburg"))}')
+input("Ready to run training? <ENTER>")
+
+MODEL.train_model(
+    #dir_path=getDrive()+"book/gutenburg_BIN/char_64",
+    dir_path=getDrive()+"book/gutenburg",
+    savepath=getDrive()+f"Models/PyTorch_v{VERSION}/Gutenburg/",
+    logpath=getDrive()+f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt'
+    )

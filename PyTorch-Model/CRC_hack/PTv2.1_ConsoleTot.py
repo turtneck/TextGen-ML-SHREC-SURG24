@@ -333,7 +333,7 @@ print("tot ML class pass")
 
 
 #==========================================================
-VERSION = '1'
+VERSION = '2.1'
 THREADS = 24 #ADJUST
 
 MODEL = PT_model_v1(meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl")
@@ -347,6 +347,6 @@ input("Ready to run training? <ENTER>")
 MODEL.train_model(
     #dir_path=getDrive()+"book/gutenburg_BIN/char_64",
     dir_path=getDrive()+"book/gutenburg",
-    savepath=getDrive()+"Models/PyTorch_v1/Gutenburg/",
+    savepath=getDrive()+f"Models/PyTorch_v{VERSION}/Gutenburg/",
     logpath=getDrive()+f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt'
     )
