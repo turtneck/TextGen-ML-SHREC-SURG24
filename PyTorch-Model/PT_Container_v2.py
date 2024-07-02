@@ -128,6 +128,7 @@ class PT_model_v1:
         for txtpath in dirlist:
             txt=dir_path+"\\"+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
+            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
             
             print( txtpath[-4:] )
@@ -202,6 +203,7 @@ class PT_model_v1:
         for txtpath in dirlist:
             txt=dir_path+"\\"+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
+            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
             
             #----------------------------------

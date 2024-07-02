@@ -5,9 +5,13 @@ from torch.nn import functional as F
 import csv,os,sys,time,datetime,multiprocessing,re
 import numpy as np
 from fun_colors import *
-PTV1_HYPER_DEF=[24,32,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
+PTV1_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 print("import pass")
 #------------------------------------------------
+
+
+#This does not have any changes besides the block_size number
+#To be used to train the generate test generation before additional training for QA
 
 
 #==========================================================
