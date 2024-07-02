@@ -11,7 +11,21 @@ sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
 
-PTV1_HYPER_DEF=[24,32,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
+PTV1_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
+
+'''
+NOTES:
+ways to try training data for QA
+- format the data set to have set of specific keys between the 'Q' and 'A'
+- much larger ref_len (Q and A are same max len, ref is QA len*2)
+- only gen A's max len
+    - format
+1.) batch training (v1)
+2.) no batch training (x is offset by 1 from y)
+3.) no batch training (x=Q, y=A)
+'''
+
+
 
 
 
@@ -25,7 +39,7 @@ class PT_model_v1:
                     
         # hyperparameters ---------------------
         self.batch_size =   hyperparameters[0] # how many independent sequences will we process in parallel?
-        self.block_size =   hyperparameters[1] # what is the maximum context length for predictions?
+        self.block_size =   hyperparameters[1] # max input/out len *2
         self.goal =         hyperparameters[2]
         self.min_iters =    hyperparameters[3]
         self.max_iters =    hyperparameters[4]
@@ -92,8 +106,8 @@ class PT_model_v1:
         return fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
     
     
-    # ========================================
-    def train_model(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
+    # ==================================================================================================
+    def train_model_basic(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
         dirlist=os.listdir(dir_path)
@@ -164,8 +178,85 @@ class PT_model_v1:
             prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             cnt+=1
+    
+    
+    # ========================================
+    def train_model_QA(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
+        prGreen(f'train_dir: {dir_path}')
+        prGreen(f'savepath: {savepath}')
+        dirlist=os.listdir(dir_path)
+        sze=len(dirlist)-1
+        cnt=start
+        
+        if end: dirlist=dirlist[start:end]
+        else: dirlist=dirlist[start:]
+        
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        prGreen(f'logpath: {logpath}')
+        script_time=time.time()
+        file_helper( logpath )#if log doesnt exist make it
+        if self.hyperparameters: logger(logpath,   f"{self.hyperparameters}")
+        else: logger(logpath,   f"No hyperparameters given during objects INIT")
+        logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
+        
+        for txtpath in dirlist:
+            txt=dir_path+"\\"+txtpath
+            prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
+            start_time=time.time()
             
-    #==========================================================
+            #----------------------------------
+            print( txtpath[-4:] )
+            if txtpath[-4:] == '.txt':
+                # print(".txt file")
+                with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
+                data = ''.join(data)
+                #cleanup
+                for i in ['™']: data=data.replace(i,"")
+                for i in ['“','”']: data=data.replace(i,'"')
+                for i in ['‘','’']: data=data.replace(i,"'")
+                for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
+                data= re.sub(' {2,}',' ',data)
+                
+                train_data_torch = fun_encode(data, self.stoi)
+                train_data_torch = torch.from_numpy( np.array(train_data_torch, dtype=np.int64) ).type(torch.long)
+            elif txtpath[-4:] == '.bin':
+                # print(".bin file")
+                train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
+            
+            #----------------------------------
+            
+            #actual training
+            for iter in range(self.max_iters):
+                # every once in a while evaluate the loss on train and val sets
+                if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
+                    losses = self.estimate_loss(train_data_torch)
+                    nowtime=time.time()
+                    prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/self.max_iters )}%>  step {iter}/{self.max_iters}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+
+                # sample a batch of data
+                xb, yb = self.get_batch(train_data_torch)
+
+                # evaluate the loss
+                logits, self.loss = self.model(xb, yb)
+                self.optimizer.zero_grad(set_to_none=True)
+                self.loss.backward()
+                self.optimizer.step()
+                if losses <= self.goal: break
+            #post
+            nowtime=time.time()
+            prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            
+            #save
+            if savepath: self.save_model(savepath+f'PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            nowtime=time.time()
+            prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            cnt+=1
+            
+    #====================================================================================================================
     def get_batch(self,data):
         try:
             # generate a small batch of data of inputs x and targets y
@@ -175,13 +266,22 @@ class PT_model_v1:
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            # print('SPLITTTT', split)
-            # print('ix',ix)
-            # t=[data[i:i+block_size] for i in ix]
-            # for i in t: print(i.dtype,i)
-            # print('pre-x',[data[i:i+block_size] for i in ix])
-            # print('x',x)
-            # print('y',y)
+            print("\n\n============================\nDATA======");print(data)
+            print("\n\n============================\nix======");print(ix)
+            print("\n\n============================\npre-x======")
+            t=[data[i:i+self.block_size] for i in ix]
+            for i in t: print(i.dtype,i)
+            print(e)
+    def get_batch_full(self,data):
+        #only prep one set of x,y 
+        try:
+            # generate a small batch of data of inputs x and targets y
+            ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
+            x = torch.stack([data[i:i+self.block_size] for i in ix])
+            y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
+            x, y = x.to(self.device), y.to(self.device)
+            return x, y
+        except Exception as e:
             print("\n\n============================\nDATA======");print(data)
             print("\n\n============================\nix======");print(ix)
             print("\n\n============================\npre-x======")
@@ -329,4 +429,4 @@ class BigramLanguageModel(nn.Module):
 
 if __name__ == "__main__":
     mod = PT_model_v1(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl")
-    mod.train_model(getDrive()+"book\\gutenburg_BIN\\char_64")
+    mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64")

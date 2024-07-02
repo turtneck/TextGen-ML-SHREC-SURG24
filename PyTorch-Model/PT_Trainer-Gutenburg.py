@@ -70,11 +70,12 @@ if __name__ == "__main__":
         
         #------------------------
         #!! running
-        prRed(Back.RED+f'TRAINING LEN: {len(os.listdir(getDrive()+"book/gutenburg_BIN/char_64")[int( model_list[-1].split("__")[-1][:-3] ):])}'+Style.RESET_ALL)
+        prRed(Back.RED+f'TRAINING LEN: {len(os.listdir(getDrive()+"book/gutenburg")[int( model_list[-1].split("__")[-1][:-3] ):])}'+Style.RESET_ALL)
         input(Fore.CYAN+"Ready to run training? <ENTER>")
         
         MODEL.train_model(
-            dir_path=getDrive()+"book\\gutenburg_BIN\\char_64",
+            #dir_path=getDrive()+"book\\gutenburg_BIN\\char_64",
+            dir_path=getDrive()+"book\\gutenburg",
             savepath=getDrive()+"Models\\PyTorch_v1\\Gutenburg\\",
             logpath=getDrive()+f'Model_Log\PyTorch\PTv{VERSION}_Gutenburg\\PTv{VERSION}_{datestr()}.txt',
             start=int( model_list[-1].split('__')[-1][:-3] )
@@ -87,11 +88,12 @@ if __name__ == "__main__":
                     
         #------------------------
         #!! running
-        prRed(Back.RED+f'TRAINING LEN: {len(os.listdir(getDrive()+"book/gutenburg_BIN/char_64"))}'+Style.RESET_ALL)
+        prRed(Back.RED+f'TRAINING LEN: {len(os.listdir(getDrive()+"book/gutenburg"))}'+Style.RESET_ALL)
         input(Fore.CYAN+"Ready to run training? <ENTER>")
         
         MODEL.train_model(
-            dir_path=getDrive()+"book\\gutenburg_BIN\\char_64",
+            #dir_path=getDrive()+"book\\gutenburg_BIN\\char_64",
+            dir_path=getDrive()+"book\\gutenburg",
             savepath=getDrive()+"Models\\PyTorch_v1\\Gutenburg\\",
             logpath=getDrive()+f'Model_Log\PyTorch\PTv{VERSION}_Gutenburg\\PTv{VERSION}_{datestr()}.txt'
             )
