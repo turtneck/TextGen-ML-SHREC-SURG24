@@ -336,8 +336,8 @@ for i in r:
 
     mod.train_model(
         dir_path=getDrive()+"book/gutenburg",
-        logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_{i}.txt',
+        logpath=getDrive()+f'Model_Log/PyTorch/PTv1_Batch/PTv1_batchTrain_{i}.txt',
         end=1,
         add_message=f'tot {i}/{len(r)}: <{gdFL( 100*(i-1)/len(r) )}%>\t')
     
-    logger(getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_{i}.txt',    '\n\n'+mod.run_model() )
+    logger(getDrive()+f'Model_Log/PyTorch/PTv1_Batch/PTv1_batchTrain_{i}.txt',    '\n\n'+mod.run_model() )

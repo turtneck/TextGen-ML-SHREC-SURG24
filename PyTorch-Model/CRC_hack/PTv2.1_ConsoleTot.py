@@ -143,7 +143,7 @@ print("general ML class pass")
 
 
 #==========================================================
-class PT_model_v1:
+class PT_model_v2_1:
     def __init__(self, meta_data, hyperparameters=PTV1_HYPER_DEF, model_path=None):
         # defaults ---------------------
         torch.manual_seed(1337)
@@ -333,10 +333,10 @@ print("tot ML class pass")
 
 
 #==========================================================
-VERSION = '2.1'
+VERSION = '2-1'
 THREADS = 24 #ADJUST
 
-MODEL = PT_model_v1(meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl")
+MODEL = PT_model_v2_1(meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl")
 print("Model create pass")
                     
 #------------------------
