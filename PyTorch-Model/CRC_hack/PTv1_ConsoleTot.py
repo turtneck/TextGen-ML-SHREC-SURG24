@@ -188,7 +188,8 @@ class PT_model_v1:
         else:
             #load model from file
             prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
-            self.model = torch.load(model_path)
+            prLightPurple(model_path)
+            self.model = torch.load(model_path, map_location=self.device)
             self.model.eval()
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
@@ -340,9 +341,19 @@ print("Model create pass")
 prRed(f'TRAINING LEN: {len(os.listdir(getDrive()+"book/gutenburg"))}')
 input("Ready to run training? <ENTER>")
 
-MODEL.train_model(
-    #dir_path=getDrive()+"book/gutenburg_BIN/char_64",
-    dir_path=getDrive()+"book/gutenburg",
-    savepath=getDrive()+f"Models/PyTorch_v{VERSION}/Gutenburg/",
-    logpath=getDrive()+f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt'
+#NOTE: TRAINING-------------------------
+# MODEL.train_model(
+#     #dir_path=getDrive()+"book/gutenburg_BIN/char_64",
+#     dir_path=getDrive()+"book/gutenburg",
+#     savepath=getDrive()+f"Models/PyTorch_v{VERSION}/Gutenburg/",
+#     logpath=getDrive()+f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt'
+#     )
+
+
+#NOTE: LOADING-------------------------
+mod = PT_model_v1(
+        meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
+        model_path=r"C:\\Users\\jump3\Desktop\\TextGen-ML-SHREC-SURG24\\PyTorch-Model\\Models\\PTv1__CRC__2024-07-08_2_41__765.pt"
     )
+# mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_TEST.txt',end=1)
+print( mod.run_model() )

@@ -11,7 +11,7 @@ sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
 
-PTV1_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
+PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 '''
 NOTES:
@@ -30,11 +30,12 @@ ways to try training data for QA
 
 
 #===============================================================================
-class PT_model_v1:
-    def __init__(self, meta_data, hyperparameters=PTV1_HYPER_DEF, model_path=None):
+class PT_model_v2:
+    def __init__(self, meta_data, hyperparameters=PTV2_HYPER_DEF, model_path=None):
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        prPurple(self.device)
         if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
                     
         # hyperparameters ---------------------
@@ -79,7 +80,8 @@ class PT_model_v1:
         else:
             #load model from file
             prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
-            self.model = torch.load(model_path)
+            prLightPurple(model_path)
+            self.model = torch.load(model_path, map_location=self.device)
             self.model.eval()
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
@@ -117,7 +119,7 @@ class PT_model_v1:
         if end: dirlist=dirlist[start:end]
         else: dirlist=dirlist[start:]
         
-        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv2-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
         prGreen(f'logpath: {logpath}')
         script_time=time.time()
         file_helper( logpath )#if log doesnt exist make it
@@ -173,8 +175,8 @@ class PT_model_v1:
             logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
-            if savepath: self.save_model(savepath+f'PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            if savepath: self.save_model(savepath+f'PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            else: self.save_model(getDrive()+f'Models\PyTorch_v2/PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
             nowtime=time.time()
             prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -192,7 +194,7 @@ class PT_model_v1:
         if end: dirlist=dirlist[start:end]
         else: dirlist=dirlist[start:]
         
-        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv2-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
         prGreen(f'logpath: {logpath}')
         script_time=time.time()
         file_helper( logpath )#if log doesnt exist make it
@@ -251,8 +253,8 @@ class PT_model_v1:
             logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
-            if savepath: self.save_model(savepath+f'PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            if savepath: self.save_model(savepath+f'PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            else: self.save_model(getDrive()+f'Models\PyTorch_v2/PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
             nowtime=time.time()
             prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -430,5 +432,15 @@ class BigramLanguageModel(nn.Module):
 
 
 if __name__ == "__main__":
-    mod = PT_model_v1(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl")
-    mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64")
+    # mod = PT_model_v2(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl")
+    # mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64")
+    
+    
+    mod = PT_model_v2(
+        meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
+        model_path=r"C:\\Users\\jump3\Desktop\\TextGen-ML-SHREC-SURG24\\PyTorch-Model\\Models\\PTv1__CRC__2024-07-08_2_41__765.pt"
+    )
+    
+    # mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_TEST.txt',end=1)
+
+    print( mod.run_model() )

@@ -65,7 +65,8 @@ class PT_model_v1:
         else:
             #load model from file
             prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
-            self.model = torch.load(model_path)
+            prLightPurple(model_path)
+            self.model = torch.load(model_path, map_location=self.device)
             self.model.eval()
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
