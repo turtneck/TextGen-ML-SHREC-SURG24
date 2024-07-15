@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import pandas as pd
 #------------------------
 import os,sys,time,datetime,re
 import numpy as np
@@ -14,15 +15,13 @@ from fun_colors import *
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 '''
-NOTES:
-ways to try training data for QA
-- format the data set to have set of specific keys between the 'Q' and 'A'
-- much larger ref_len (Q and A are same max len, ref is QA len*2)
-- only gen A's max len
-    - format
-1.) batch training (v1)
-2.) no batch training (x is offset by 1 from y)
-3.) no batch training (x=Q, y=A)
+changes:
+ - HIGHER char changes
+ - Prompt training while retaining 'finishing' training
+ - better loading
+ - still by-char focus, by-word available
+ 
+could have just kept this as v1, but felt there was enough changes to just make a new verison to make the defaults of meta data easier
 '''
 
 
@@ -31,7 +30,7 @@ ways to try training data for QA
 
 #===============================================================================
 class PT_model_v2:
-    def __init__(self, meta_data, hyperparameters=PTV2_HYPER_DEF, model_path=None):
+    def __init__(self, meta_data, hyperparameters=PTV2_HYPER_DEF, model_path=None,name=None):
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -66,6 +65,9 @@ class PT_model_v2:
         elif meta['int'] == 256: self.mdtype=np.int256
         else: raise TypeError(f"unknown meta data type signed: {meta['int']}")
         prGreen(hyperparameters)
+        
+        # name ---------------------
+        self.name = 'PTv2_'+name
             
         # Model ---------------------
         if model_path == None:
@@ -77,11 +79,39 @@ class PT_model_v2:
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
             
             print(Back.GREEN+"SUCCESS: MODEL CREATED"+Style.RESET_ALL)
+        elif model_path[-3:] !='.pt':
+            #load latest model from a directory
+            prGreen("Loading latest")
+            prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
+            #!! get dir of models
+            model_list = os.listdir(model_path)
+            
+            #!! load last model
+            #   NOTE; each model name is saved in the format:      PTv(version)__(datetime)__(dataset index).pt
+            #   this has it sorted by version, time created, dataset ran; each in accending order
+            try:
+                #find last model
+                if len(model_list) == 0: raise IndexError("ERROR:  Model Directory is empty, no 'latest' models to choose from")
+                if model_list[-1][-3:] != '.pt': raise IndexError(f"ERROR:  Latest 'Model' is invalid file type: < {model_list[-1][-3:]} >")
+                
+                prLightPurple(model_path+"\\"+model_list[-1])
+                self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
+                self.model.load_state_dict(  torch.load(model_path+"\\"+model_list[-1], map_location=self.device)  )
+                self.model.eval()
+                self.m = self.model.to(self.device)
+                self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+                
+                print(Back.GREEN+"SUCCESS: MODEL LOADED"+Style.RESET_ALL)
+            except Exception as e:
+                prALERT(str(e))
+                print(Style.RESET_ALL)
+                os._exit()         
         else:
             #load model from file
             prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
             prLightPurple(model_path)
-            self.model = torch.load(model_path, map_location=self.device)
+            self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
+            self.model.load_state_dict(  torch.load(model_path, map_location=self.device)  )
             self.model.eval()
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
@@ -109,6 +139,8 @@ class PT_model_v2:
     
     
     # ==================================================================================================
+    #NOTE: train model from the procedding character (finishing)
+    #txt or int64 encoded bin array
     def train_model_basic(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
@@ -119,7 +151,7 @@ class PT_model_v2:
         if end: dirlist=dirlist[start:end]
         else: dirlist=dirlist[start:]
         
-        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv2-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
         prGreen(f'logpath: {logpath}')
         script_time=time.time()
         file_helper( logpath )#if log doesnt exist make it
@@ -175,8 +207,8 @@ class PT_model_v2:
             logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
-            if savepath: self.save_model(savepath+f'PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(getDrive()+f'Models\PyTorch_v2/PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
             nowtime=time.time()
             prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -184,17 +216,21 @@ class PT_model_v2:
     
     
     # ========================================
-    def train_model_QA(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
+    #NOTE: train model from 'Q&A' Prompts
+    #csv
+    def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
-        dirlist=os.listdir(dir_path)
-        sze=len(dirlist)-1
-        cnt=start
         
-        if end: dirlist=dirlist[start:end]
-        else: dirlist=dirlist[start:]
+        #NOTE: [!!!!] load csv, iterate through it for each training
+        sze = csv_size(dir_path) #get size of data (#rows)
+        cnt=0
+        df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
+        #iterate till start
+        while cnt != start: df = next(df_iter); cnt+=1
         
-        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv2-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        #NOTE: [!!!!] setting uplog info
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
         prGreen(f'logpath: {logpath}')
         script_time=time.time()
         file_helper( logpath )#if log doesnt exist make it
@@ -202,103 +238,85 @@ class PT_model_v2:
         else: logger(logpath,   f"No hyperparameters given during objects INIT")
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
-        for txtpath in dirlist:
-            txt=dir_path+"\\"+txtpath
-            prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
-            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
-            start_time=time.time()
-            
-            #----------------------------------
-            print( txtpath[-4:] )
-            if txtpath[-4:] == '.txt':
-                # print(".txt file")
-                with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
-                data = ''.join(data)
-                #cleanup
-                for i in ['™']: data=data.replace(i,"")
-                for i in ['“','”']: data=data.replace(i,'"')
-                for i in ['‘','’']: data=data.replace(i,"'")
-                for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
-                data= re.sub(' {2,}',' ',data)
+        
+        #NOTE: [!!!!] iterate through dataset
+        while True:
+            try:
+                prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...======================================")
+                start_time=time.time()                    
                 
-                train_data_torch = fun_encode(data, self.stoi)
-                train_data_torch = torch.from_numpy( np.array(train_data_torch, dtype=np.int64) ).type(torch.long)
-            elif txtpath[-4:] == '.bin':
-                # print(".bin file")
-                train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
-            
-            #----------------------------------
-            
-            #actual training
-            for iter in range(self.max_iters):
-                # every once in a while evaluate the loss on train and val sets
-                if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
-                    losses = self.estimate_loss(train_data_torch)
-                    nowtime=time.time()
-                    prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/self.max_iters )}%>  step {iter}/{self.max_iters}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                    logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                df = next(df_iter)
+                train_torch_prompt = torch.from_numpy( np.array(fun_encode(df.prompt, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_target = torch.from_numpy( np.array(fun_encode(df.target, self.stoi), dtype=np.int64) ).type(torch.long)
+                
+                #----------------------------------
+                
+                #actual training
+                for iter in range(self.max_iters):
+                    # every once in a while evaluate the loss on train and val sets
+                    if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
+                        losses = self.estimate_loss(train_torch_prompt,train_torch_target)
+                        nowtime=time.time()
+                        prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/self.max_iters )}%>  step {iter}/{self.max_iters}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
-                # sample a batch of data
-                xb, yb = self.get_batch(train_data_torch)
+                    # sample a batch of data
+                    xb, yb = self.get_batch(train_torch_prompt,train_torch_target)
 
-                # evaluate the loss
-                logits, self.loss = self.model(xb, yb)
-                self.optimizer.zero_grad(set_to_none=True)
-                self.loss.backward()
-                self.optimizer.step()
-                if losses <= self.goal: break
-            #post
-            nowtime=time.time()
-            prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            
-            #save
-            if savepath: self.save_model(savepath+f'PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(getDrive()+f'Models\PyTorch_v2/PTv2__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            nowtime=time.time()
-            prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            cnt+=1
+                    # evaluate the loss
+                    logits, self.loss = self.model(xb, yb)
+                    self.optimizer.zero_grad(set_to_none=True)
+                    self.loss.backward()
+                    self.optimizer.step()
+                    if losses <= self.goal: break
+                #post
+                nowtime=time.time()
+                prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                
+                #save
+                if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                nowtime=time.time()
+                prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                cnt+=1
+            except StopIteration:
+                break
             
     #====================================================================================================================
-    def get_batch(self,data):
+    #add target arg if training for prompts
+    def get_batch(self,data, targets=None):
         try:
             # generate a small batch of data of inputs x and targets y
-            ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
-            x = torch.stack([data[i:i+self.block_size] for i in ix])
-            y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
+            if targets is None: 
+                ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
+                x = torch.stack([data[i:i+self.block_size] for i in ix])
+                y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
+            else:
+                x = torch.stack(data)
+                y = torch.stack(targets)
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
             print("\n\n============================\nDATA======");print(data)
-            print("\n\n============================\nix======");print(ix)
-            print("\n\n============================\npre-x======")
-            t=[data[i:i+self.block_size] for i in ix]
-            for i in t: print(i.dtype,i)
-            print(e)
-    def get_batch_full(self,data):
-        #only prep one set of x,y 
-        try:
-            # generate a small batch of data of inputs x and targets y
-            ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
-            x = torch.stack([data[i:i+self.block_size] for i in ix])
-            y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
-            x, y = x.to(self.device), y.to(self.device)
-            return x, y
-        except Exception as e:
-            print("\n\n============================\nDATA======");print(data)
-            print("\n\n============================\nix======");print(ix)
-            print("\n\n============================\npre-x======")
-            t=[data[i:i+self.block_size] for i in ix]
-            for i in t: print(i.dtype,i)
+            if targets is None: 
+                print("\n\n============================\nix======");print(ix)
+                print("\n\n============================\npre-x======")
+                t=[data[i:i+self.block_size] for i in ix]
+                for i in t: print(i.dtype,i)
+            else: print("\n\n============================\nTARGETS======");print(targets)
             print(e)
 
+    
+    #add target arg if training for prompts
     @torch.no_grad()
-    def estimate_loss(self,data):
+    def estimate_loss(self,data, targets=None):
         self.model.eval()
         losses = torch.zeros(self.eval_iters)
         for k in range(self.eval_iters):
-            X, Y = self.get_batch(data)
+            X, Y = self.get_batch(data,targets)
             logits, self.loss = self.model(X, Y)
             losses[k] = self.loss.item()
         out = losses.mean()

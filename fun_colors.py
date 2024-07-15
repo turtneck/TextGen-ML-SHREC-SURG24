@@ -1,7 +1,7 @@
 # holder file for easier printing of colored terminal text for readibility
 # taken from: https://www.geeksforgeeks.org/print-colors-python-terminal/
 
-import pickle, win32api,datetime
+import pickle, win32api,datetime,pandas
 from colorama import Fore, Back, Style
 def prRed(skk): print("\033[91m{}\033[00m" .format(skk))
 def prGreen(skk): print("\033[92m{}\033[00m" .format(skk))
@@ -83,3 +83,21 @@ def mean(arr):
     tot=0
     for i in arr:tot+=i
     return tot/len(arr)
+
+def csv_size(filepath):
+    try:
+        df_iter = pandas.read_csv(filepath)
+        return df_iter.shape[0]
+    except Exception as e:
+        prALERT('csv_size\n'+e)
+        sze=0
+        df_iter = pandas.read_csv(filepath, iterator=True, chunksize=1)
+        while True:
+            try:
+                df = next(df_iter)
+                sze+=1
+            except StopIteration:
+                break
+        return sze
+        
+    
