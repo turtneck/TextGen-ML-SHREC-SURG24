@@ -108,10 +108,16 @@ class PT_model_v2:
                 os._exit()         
         else:
             #load model from file
+            # prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
+            # prLightPurple(model_path)
+            # self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
+            # self.model.load_state_dict(  torch.load(model_path, map_location=self.device)  )
+            # self.model.eval()
+            # self.m = self.model.to(self.device)
+            # self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
             prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
             prLightPurple(model_path)
-            self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
-            self.model.load_state_dict(  torch.load(model_path, map_location=self.device)  )
+            self.model = torch.load(model_path, map_location=self.device)
             self.model.eval()
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
