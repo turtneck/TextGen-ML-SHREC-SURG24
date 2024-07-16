@@ -79,7 +79,7 @@ class PT_model_v2:
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
             
-            print(Back.GREEN+"SUCCESS: MODEL CREATED"+Style.RESET_ALL)
+            print("SUCCESS: MODEL CREATED")
         elif model_path[-3:] !='.pt':
             #load latest model from a directory
             prGreen("Loading latest")
@@ -102,7 +102,7 @@ class PT_model_v2:
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
                 
-                print(Back.GREEN+"SUCCESS: MODEL LOADED"+Style.RESET_ALL)
+                print("SUCCESS: MODEL LOADED")
             except Exception as e:
                 prALERT(str(e))
                 print(Style.RESET_ALL)
@@ -123,7 +123,7 @@ class PT_model_v2:
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
             
-            print(Back.GREEN+"SUCCESS: MODEL LOADED"+Style.RESET_ALL)
+            print("SUCCESS: MODEL LOADED")
             
     
     
@@ -189,7 +189,7 @@ class PT_model_v2:
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
                 train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
-            else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
+            else: raise TypeError(f"non 'txt' or 'bin' file for 'train_model_prompt' not supported")
             
             #actual training
             for iter in range(self.max_iters):
@@ -239,6 +239,7 @@ class PT_model_v2:
             #iterate till start
             while cnt != start: df = next(df_iter); cnt+=1
         else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
+        prGreen("CSV LOAD SUCCESS")
         
         #NOTE: [!!!!] setting uplog info
         if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
