@@ -302,7 +302,6 @@ class PT_model_v2:
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
                 train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
-            else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
             
             #actual training
             for iter in range(self.max_iters):
@@ -448,13 +447,14 @@ print("tot ML class pass")
 
 
 #==========================================================
-VERSION = '2'
+VERSION = '1'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
 MODEL = PT_model_v2(meta_data="book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/PTv2__CRC_2024-07-08_17_21__1113.pt',
-        name='_CRC')
+        model_path=dir_path+'/Models/PTv1__CRC__2024-07-08_2_41__765.pt',
+        name='_32REF__CRC',
+        hyperparameters=[24,32,0.7,1000,30000,100,1e-3,200,64,4,4,0.0])
 print("Model create pass")
                     
 #------------------------
@@ -464,9 +464,8 @@ input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
 MODEL.train_model_basic(
-    #dir_path="book/gutenburg_BIN/char_64",
     dir_path="book/gutenburg",
     savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
     logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
-    start=1114
+    start=766
     )

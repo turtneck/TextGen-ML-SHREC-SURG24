@@ -332,28 +332,22 @@ print("tot ML class pass")
 #==========================================================
 VERSION = '1'
 THREADS = 24 #ADJUST
+dir_path = os.path.abspath("")
 
-MODEL = PT_model_v1(meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl")
+MODEL = PT_model_v1(meta_data="book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
+        model_path=dir_path+'/Models/PTv1__CRC__2024-07-08_2_41__765.pt',
+        name='_CRC')
 print("Model create pass")
                     
 #------------------------
 #!! running
-prRed(f'TRAINING LEN: {len(os.listdir(getDrive()+"book/gutenburg"))}')
+prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
-# MODEL.train_model(
-#     #dir_path=getDrive()+"book/gutenburg_BIN/char_64",
-#     dir_path=getDrive()+"book/gutenburg",
-#     savepath=getDrive()+f"Models/PyTorch_v{VERSION}/Gutenburg/",
-#     logpath=getDrive()+f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt'
-#     )
-
-
-#NOTE: LOADING-------------------------
-mod = PT_model_v1(
-        meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
-        model_path=r"C:\\Users\\jump3\Desktop\\TextGen-ML-SHREC-SURG24\\PyTorch-Model\\Models\\PTv1__CRC__2024-07-08_2_41__765.pt"
+MODEL.train_model(
+    dir_path="book/gutenburg",
+    savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
+    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
+    start=766
     )
-# mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_TEST.txt',end=1)
-print( mod.run_model() )

@@ -449,12 +449,12 @@ print("tot ML class pass")
 
 #==========================================================
 VERSION = '2'
+NAMU = 'Prompt-RAW'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
 MODEL = PT_model_v2(meta_data="book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/PTv2__CRC_2024-07-08_17_21__1113.pt',
-        name='_CRC')
+        name='_CRC__Prompt-RAW__')
 print("Model create pass")
                     
 #------------------------
@@ -463,10 +463,9 @@ prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
-MODEL.train_model_basic(
+MODEL.train_model_prompt(
     #dir_path="book/gutenburg_BIN/char_64",
-    dir_path="book/gutenburg",
-    savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
-    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
-    start=1114
+    dir_path="prompt/1M-GPT4-Augmented_edit.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/Prompt-RAW/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_{NAMU}_{datestr()}.txt'
     )

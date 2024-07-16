@@ -16,12 +16,13 @@ PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 '''
 changes:
- - HIGHER char changes
+ - higher default context
  - Prompt training while retaining 'finishing' training
  - better loading
  - still by-char focus, by-word available
  
 could have just kept this as v1, but felt there was enough changes to just make a new verison to make the defaults of meta data easier
+- to remake this as 'v1', change the 2nd hyperparameter (context) to 32
 '''
 
 
@@ -188,6 +189,7 @@ class PT_model_v2:
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
                 train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
+            else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
             
             #actual training
             for iter in range(self.max_iters):
@@ -256,8 +258,8 @@ class PT_model_v2:
                 start_time=time.time()                    
                 
                 df = next(df_iter)
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(df.question, self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(df.response, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_prompt = torch.from_numpy( np.array(fun_encode(list(df.question)[0], self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_target = torch.from_numpy( np.array(fun_encode(list(df.response)[0], self.stoi), dtype=np.int64) ).type(torch.long)
                 
                 #----------------------------------
                 
