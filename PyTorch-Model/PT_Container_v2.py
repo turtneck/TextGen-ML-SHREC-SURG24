@@ -229,11 +229,14 @@ class PT_model_v2:
         prGreen(f'savepath: {savepath}')
         
         #NOTE: [!!!!] load csv, iterate through it for each training
-        sze = csv_size(dir_path) #get size of data (#rows)
-        cnt=0
-        df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
-        #iterate till start
-        while cnt != start: df = next(df_iter); cnt+=1
+        print( dir_path[-4:] )
+        if dir_path[-4:] == '.csv':
+            sze = csv_size(dir_path) #get size of data (#rows)
+            cnt=0
+            df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
+            #iterate till start
+            while cnt != start: df = next(df_iter); cnt+=1
+        else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
         
         #NOTE: [!!!!] setting uplog info
         if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
@@ -253,8 +256,8 @@ class PT_model_v2:
                 start_time=time.time()                    
                 
                 df = next(df_iter)
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(df.prompt, self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(df.target, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_prompt = torch.from_numpy( np.array(fun_encode(df.question, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_target = torch.from_numpy( np.array(fun_encode(df.response, self.stoi), dtype=np.int64) ).type(torch.long)
                 
                 #----------------------------------
                 

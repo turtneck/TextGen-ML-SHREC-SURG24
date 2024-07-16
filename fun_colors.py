@@ -99,5 +99,10 @@ def csv_size(filepath):
             except StopIteration:
                 break
         return sze
+
+def parquet_size(filepath):
+    df = pandas.read_parquet(filepath)
+    return df.shape[0]
+
         
     
