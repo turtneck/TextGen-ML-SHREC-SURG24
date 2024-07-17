@@ -458,7 +458,7 @@ VERSION = '2'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
-MODEL = PT_model_v2(meta_data="book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
+MODEL = PT_model_v2(meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
         model_path=dir_path+'/Models/PTv2__CRC_2024-07-08_17_21__1113.pt',
         name='_CRC')
 print("Model create pass")

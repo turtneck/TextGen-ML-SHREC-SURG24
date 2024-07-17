@@ -459,7 +459,7 @@ NAMU = 'Prompt-RAW'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
-MODEL = PT_model_v2(meta_data="book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
+MODEL = PT_model_v2(meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
         name='_CRC__Prompt-RAW__')
 print("Model create pass")
                     

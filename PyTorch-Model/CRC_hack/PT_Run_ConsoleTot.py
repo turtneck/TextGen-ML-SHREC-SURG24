@@ -618,13 +618,13 @@ for i in os.listdir(dir_path+'/Models'):
     if i[3] == '1':
         print('1',i[3])
         MODEL = PT_model_v1(
-        meta_data="book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
+        meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
         model_path=dir_path+'/Models/'+i
         )
     elif i[3] == '2':
         print('2',i[3])
         MODEL = PT_model_v2(
-        meta_data="book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
+        meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
         model_path=dir_path+'/Models/'+i
         )
     else: prALERT('FAIL:'+i[3])

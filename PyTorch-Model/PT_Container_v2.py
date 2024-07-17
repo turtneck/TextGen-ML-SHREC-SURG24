@@ -79,7 +79,7 @@ class PT_model_v2:
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
             
-            print("SUCCESS: MODEL CREATED")
+            prGreen("SUCCESS: MODEL CREATED")
         elif model_path[-3:] !='.pt':
             #load latest model from a directory
             prGreen("Loading latest")
@@ -102,7 +102,7 @@ class PT_model_v2:
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
                 
-                print("SUCCESS: MODEL LOADED")
+                prGreen("SUCCESS: MODEL LOADED")
             except Exception as e:
                 prALERT(str(e))
                 print(Style.RESET_ALL)
@@ -307,18 +307,18 @@ class PT_model_v2:
                 x = torch.stack([data[i:i+self.block_size] for i in ix])
                 y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
             else:
-                x = torch.stack(data)
-                y = torch.stack(targets)
+                x = torch.stack([data for i in range(self.batch_size)])
+                y = torch.stack([targets for i in range(self.batch_size)])
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            print("\n\n============================\nDATA======");print(data)
+            print("\n\n============================\nDATA======");print(data[:10])
             if targets is None: 
-                print("\n\n============================\nix======");print(ix)
+                print("\n\n============================\nix======");print(ix[:10])
                 print("\n\n============================\npre-x======")
                 t=[data[i:i+self.block_size] for i in ix]
                 for i in t: print(i.dtype,i)
-            else: print("\n\n============================\nTARGETS======");print(targets)
+            else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
