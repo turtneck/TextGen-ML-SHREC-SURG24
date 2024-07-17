@@ -192,7 +192,7 @@ class PT_model_v2:
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
             
-            print("SUCCESS: MODEL CREATED")
+            prGreen("SUCCESS: MODEL CREATED")
         elif model_path[-3:] !='.pt':
             #load latest model from a directory
             prGreen("Loading latest")
@@ -215,7 +215,7 @@ class PT_model_v2:
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
                 
-                print("SUCCESS: MODEL LOADED")
+                prGreen("SUCCESS: MODEL LOADED")
             except Exception as e:
                 prALERT(str(e))
                 print(Style.RESET_ALL)
@@ -271,7 +271,7 @@ class PT_model_v2:
         if end: dirlist=dirlist[start:end]
         else: dirlist=dirlist[start:]
         
-        if logpath==None: logpath = f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
         prGreen(f'logpath: {logpath}')
         script_time=time.time()
         file_helper( logpath )#if log doesnt exist make it
@@ -280,7 +280,7 @@ class PT_model_v2:
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
         for txtpath in dirlist:
-            txt=dir_path+"/"+txtpath
+            txt=dir_path+"\\"+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
@@ -302,6 +302,7 @@ class PT_model_v2:
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
                 train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
+            else: raise TypeError(f"non 'txt' or 'bin' file for 'train_model_prompt' not supported")
             
             #actual training
             for iter in range(self.max_iters):
@@ -328,7 +329,7 @@ class PT_model_v2:
             
             #save
             if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+            else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
             nowtime=time.time()
             prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -343,14 +344,18 @@ class PT_model_v2:
         prGreen(f'savepath: {savepath}')
         
         #NOTE: [!!!!] load csv, iterate through it for each training
-        sze = csv_size(dir_path) #get size of data (#rows)
-        cnt=0
-        df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
-        #iterate till start
-        while cnt != start: df = next(df_iter); cnt+=1
+        print( dir_path[-4:] )
+        if dir_path[-4:] == '.csv':
+            sze = csv_size(dir_path) #get size of data (#rows)
+            cnt=0
+            df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
+            #iterate till start
+            while cnt != start: df = next(df_iter); cnt+=1
+        else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
+        prGreen("CSV LOAD SUCCESS")
         
         #NOTE: [!!!!] setting uplog info
-        if logpath==None: logpath = f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
         prGreen(f'logpath: {logpath}')
         script_time=time.time()
         file_helper( logpath )#if log doesnt exist make it
@@ -367,8 +372,18 @@ class PT_model_v2:
                 start_time=time.time()                    
                 
                 df = next(df_iter)
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(df.prompt, self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(df.target, self.stoi), dtype=np.int64) ).type(torch.long)
+                
+                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
+                response = list( list(df.response)[0] )
+                if len(question)>len(response):
+                    for i in range( len(question)-len(response) ): response.append('')
+                elif len(question)<len(response):
+                    for i in range( len(response)-len(question) ): question.append('')
+                # print('xy size',len(response),len(question))
+                
+                train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
+                del response,question
                 
                 #----------------------------------
                 
@@ -397,7 +412,7 @@ class PT_model_v2:
                 
                 #save
                 if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -415,18 +430,18 @@ class PT_model_v2:
                 x = torch.stack([data[i:i+self.block_size] for i in ix])
                 y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
             else:
-                x = torch.stack(data)
-                y = torch.stack(targets)
+                x = torch.stack([data for i in range(self.batch_size)])
+                y = torch.stack([targets for i in range(self.batch_size)])
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            print("\n\n============================\nDATA======");print(data)
+            print("\n\n============================\nDATA======");print(data[:10])
             if targets is None: 
-                print("\n\n============================\nix======");print(ix)
+                print("\n\n============================\nix======");print(ix[:10])
                 print("\n\n============================\npre-x======")
                 t=[data[i:i+self.block_size] for i in ix]
                 for i in t: print(i.dtype,i)
-            else: print("\n\n============================\nTARGETS======");print(targets)
+            else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
@@ -442,6 +457,7 @@ class PT_model_v2:
         out = losses.mean()
         self.model.train()
         return out
+            
 print("tot ML class pass")
 #------------------------------------------------
 

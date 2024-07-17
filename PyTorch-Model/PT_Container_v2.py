@@ -259,8 +259,18 @@ class PT_model_v2:
                 start_time=time.time()                    
                 
                 df = next(df_iter)
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(list(df.question)[0], self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(list(df.response)[0], self.stoi), dtype=np.int64) ).type(torch.long)
+                
+                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
+                response = list( list(df.response)[0] )
+                if len(question)>len(response):
+                    for i in range( len(question)-len(response) ): response.append('')
+                elif len(question)<len(response):
+                    for i in range( len(response)-len(question) ): question.append('')
+                # print('xy size',len(response),len(question))
+                
+                train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
+                del response,question
                 
                 #----------------------------------
                 

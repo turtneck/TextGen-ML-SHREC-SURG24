@@ -193,7 +193,7 @@ class PT_model_v2:
             self.m = self.model.to(self.device)
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
             
-            print("SUCCESS: MODEL CREATED")
+            prGreen("SUCCESS: MODEL CREATED")
         elif model_path[-3:] !='.pt':
             #load latest model from a directory
             prGreen("Loading latest")
@@ -216,7 +216,7 @@ class PT_model_v2:
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
                 
-                print("SUCCESS: MODEL LOADED")
+                prGreen("SUCCESS: MODEL LOADED")
             except Exception as e:
                 prALERT(str(e))
                 print(Style.RESET_ALL)
@@ -373,8 +373,18 @@ class PT_model_v2:
                 start_time=time.time()                    
                 
                 df = next(df_iter)
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(list(df.question)[0], self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(list(df.response)[0], self.stoi), dtype=np.int64) ).type(torch.long)
+                
+                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
+                response = list( list(df.response)[0] )
+                if len(question)>len(response):
+                    for i in range( len(question)-len(response) ): response.append('')
+                elif len(question)<len(response):
+                    for i in range( len(response)-len(question) ): question.append('')
+                # print('xy size',len(response),len(question))
+                
+                train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
+                del response,question
                 
                 #----------------------------------
                 
@@ -421,18 +431,18 @@ class PT_model_v2:
                 x = torch.stack([data[i:i+self.block_size] for i in ix])
                 y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
             else:
-                x = torch.stack(data)
-                y = torch.stack(targets)
+                x = torch.stack([data for i in range(self.batch_size)])
+                y = torch.stack([targets for i in range(self.batch_size)])
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            print("\n\n============================\nDATA======");print(data)
+            print("\n\n============================\nDATA======");print(data[:10])
             if targets is None: 
-                print("\n\n============================\nix======");print(ix)
+                print("\n\n============================\nix======");print(ix[:10])
                 print("\n\n============================\npre-x======")
                 t=[data[i:i+self.block_size] for i in ix]
                 for i in t: print(i.dtype,i)
-            else: print("\n\n============================\nTARGETS======");print(targets)
+            else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
@@ -448,7 +458,7 @@ class PT_model_v2:
         out = losses.mean()
         self.model.train()
         return out
-            
+                 
 print("tot ML class pass")
 #------------------------------------------------
 
