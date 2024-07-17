@@ -6,7 +6,6 @@ import pandas as pd
 import csv,os,sys,time,datetime,multiprocessing,re
 import numpy as np
 from fun_colors import *
-PROMPTLIMIT=256
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 print("import pass")
 #------------------------------------------------
@@ -366,6 +365,7 @@ class PT_model_v2:
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
         
+        fail_cnt=0
         #NOTE: [!!!!] iterate through dataset
         while True:
             try:
@@ -375,17 +375,50 @@ class PT_model_v2:
                 
                 df = next(df_iter)
                 
-                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
-                response = list( list(df.response)[0] )
+                # question = list( list(df.question)[0] ) #annoying conversion from array of strings to an array of chars
+                # response = list( list(df.response)[0] )
+                question = str( list(df.question)[0] )#annoying conversion from array of strings to an array of chars
+                response = str( list(df.response)[0] )
+                
+                #cleanup
+                temp=''
+                for wrd in question:
+                    for i in ['™']: wrd=wrd.replace(i,"")
+                    for i in ['“','”']: wrd=wrd.replace(i,'"')
+                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
+                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
+                    wrd= re.sub(' {2,}',' ',wrd)
+                    if wrd=='' or len(wrd)<1: continue
+                    for chr in wrd: temp+=chr
+                question=list(temp)
+                temp=''
+                for wrd in response:
+                    for i in ['™']: wrd=wrd.replace(i,"")
+                    for i in ['“','”']: wrd=wrd.replace(i,'"')
+                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
+                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
+                    wrd= re.sub(' {2,}',' ',wrd)
+                    if wrd=='' or len(wrd)<1: continue
+                    for chr in wrd: temp+=chr
+                response=list(temp)
+                del temp
+                
                 if len(question)>len(response):
                     for i in range( len(question)-len(response) ): response.append('')
                 elif len(question)<len(response):
                     for i in range( len(response)-len(question) ): question.append('')
                 # print('xy size',len(response),len(question))
                 
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
-                del response,question
+                try:
+                    train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
+                    train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
+                    del response,question
+                except Exception as e:
+                    fail_cnt+=1
+                    print(f'char couldnt go in stoi: {fail_cnt}'+str(e))
+                    # print(e)
+                    logger(logpath, f'char couldnt go in stoi: {fail_cnt}'+str(e))
+                    continue
                 
                 #----------------------------------
                 
@@ -413,8 +446,9 @@ class PT_model_v2:
                 logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 
                 #save
-                if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                if cnt%1000 == 0:
+                    if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -437,13 +471,13 @@ class PT_model_v2:
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            # print("\n\n============================\nDATA======");print(data[:10])
-            # if targets is None: 
-                # print("\n\n============================\nix======");print(ix[:10])
-                # print("\n\n============================\npre-x======")
-                # t=[data[i:i+self.block_size] for i in ix]
-                # for i in t: print(i.dtype,i)
-            # else: print("\n\n============================\nTARGETS======");print(targets[:10])
+            print("\n\n============================\nDATA======");print(data[:10])
+            if targets is None: 
+                print("\n\n============================\nix======");print(ix[:10])
+                print("\n\n============================\npre-x======")
+                t=[data[i:i+self.block_size] for i in ix]
+                for i in t: print(i.dtype,i)
+            else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
@@ -459,31 +493,27 @@ class PT_model_v2:
         out = losses.mean()
         self.model.train()
         return out
-                       
+                  
 print("tot ML class pass")
 #------------------------------------------------
 
 
 #==========================================================
-VERSION = '2'
+VERSION = '3-sntp'
+NAMU = 'Prompt-RAW'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
-MODEL = PT_model_v2(meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/PTv2__CRC__2024-07-16_21_9__1320.pt',
-        name='_CRC')
+MODEL = PT_model_v3(name='_CRC__Prompt-RAW__')
 print("Model create pass")
                     
 #------------------------
 #!! running
-prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
-# input("Ready to run training? <ENTER>")
+input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
-MODEL.train_model_basic(
-    #dir_path="book/gutenburg_BIN/char_64",
-    dir_path="book/gutenburg",
-    savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
-    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
-    start=1321
+MODEL.train_model_prompt(
+    dir_path="prompt/1M-GPT4-Augmented_edit-256-3.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/Prompt-RAW/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_{NAMU}_{datestr()}.txt'
     )

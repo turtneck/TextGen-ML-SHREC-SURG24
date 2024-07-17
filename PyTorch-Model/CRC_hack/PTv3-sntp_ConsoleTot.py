@@ -6,7 +6,6 @@ import pandas as pd
 import csv,os,sys,time,datetime,multiprocessing,re
 import numpy as np
 from fun_colors import *
-PROMPTLIMIT=256
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 print("import pass")
 #------------------------------------------------
@@ -465,13 +464,11 @@ print("tot ML class pass")
 
 
 #==========================================================
-VERSION = '2'
+VERSION = '3-sntp'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
-MODEL = PT_model_v2(meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/PTv2__CRC__2024-07-16_21_9__1320.pt',
-        name='_CRC')
+MODEL = PT_model_v3(name='_CRC')
 print("Model create pass")
                     
 #------------------------
@@ -481,9 +478,7 @@ prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 
 #NOTE: TRAINING-------------------------
 MODEL.train_model_basic(
-    #dir_path="book/gutenburg_BIN/char_64",
     dir_path="book/gutenburg",
     savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
-    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
-    start=1321
+    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt'
     )

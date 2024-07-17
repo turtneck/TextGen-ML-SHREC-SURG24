@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 import pandas as pd
 #------------------------
-import csv,os,sys,time,datetime,multiprocessing,re
+import os,sys,time,datetime,re,tiktoken
 import numpy as np
 from fun_colors import *
 PROMPTLIMIT=256
@@ -145,13 +145,13 @@ print("general ML class pass")
 
 
 #==========================================================
-class PT_model_v2:
-    def __init__(self, meta_data, hyperparameters=PTV2_HYPER_DEF, model_path=None,name=None):
+class PT_model_v3:
+    def __init__(self, hyperparameters=PTV2_HYPER_DEF, model_path=None,name=None):
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         prPurple(self.device)
-        if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
+        if hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
                     
         # hyperparameters ---------------------
         self.batch_size =   hyperparameters[0] # how many independent sequences will we process in parallel?
@@ -169,26 +169,16 @@ class PT_model_v2:
         self.hyperparameters = hyperparameters
             
         # meta data ---------------------
-        with open(meta_data, 'rb') as f: meta = pickle.load(f)
-        self.stoi = meta['stoi']
-        self.itos = meta['itos']
-        self.vocab_size = meta['vocab_size']
-        if meta['int'] == 8: self.mdtype=np.int8
-        elif meta['int'] == 16: self.mdtype=np.int16
-        elif meta['int'] == 32: self.mdtype=np.int32
-        elif meta['int'] == 64: self.mdtype=np.int64
-        elif meta['int'] == 128: self.mdtype=np.int128
-        elif meta['int'] == 256: self.mdtype=np.int256
-        else: raise TypeError(f"unknown meta data type signed: {meta['int']}")
+        self.vocab_size = 50257 #gpt2 vocab size 'tiktoken.get_encoding("gpt2").n_vocab'
         prGreen(hyperparameters)
         
         # name ---------------------
-        self.name = 'PTv2_'+name
+        self.name = 'PTv3-tktk_'+name
             
         # Model ---------------------
         if model_path == None:
             #make new model
-            if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
+            if hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
         
             self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
             self.m = self.model.to(self.device)
@@ -299,7 +289,7 @@ class PT_model_v2:
                 for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
                 data= re.sub(' {2,}',' ',data)
                 
-                train_data_torch = fun_encode(data, self.stoi)
+                train_data_torch = tiktoken.get_encoding("gpt2").encode(data)
                 train_data_torch = torch.from_numpy( np.array(train_data_torch, dtype=np.int64) ).type(torch.long)
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
@@ -365,7 +355,7 @@ class PT_model_v2:
         else: logger(logpath,   f"No hyperparameters given during objects INIT")
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
-        
+        fail_cnt=0
         #NOTE: [!!!!] iterate through dataset
         while True:
             try:
@@ -375,17 +365,54 @@ class PT_model_v2:
                 
                 df = next(df_iter)
                 
-                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
-                response = list( list(df.response)[0] )
-                if len(question)>len(response):
-                    for i in range( len(question)-len(response) ): response.append('')
-                elif len(question)<len(response):
-                    for i in range( len(response)-len(question) ): question.append('')
-                # print('xy size',len(response),len(question))
+                # question = list( list(df.question)[0] ) #annoying conversion from array of strings to an array of chars
+                # response = list( list(df.response)[0] )
+                question = str( list(df.question)[0] )#annoying conversion from array of strings to an array of chars
+                response = str( list(df.response)[0] )
                 
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
+                #cleanup
+                temp=''
+                for wrd in question:
+                    for i in ['™']: wrd=wrd.replace(i,"")
+                    for i in ['“','”']: wrd=wrd.replace(i,'"')
+                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
+                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
+                    wrd= re.sub(' {2,}',' ',wrd)
+                    if wrd=='' or len(wrd)<1: continue
+                    for chr in wrd: temp+=chr
+                question=temp
+                temp=''
+                for wrd in response:
+                    for i in ['™']: wrd=wrd.replace(i,"")
+                    for i in ['“','”']: wrd=wrd.replace(i,'"')
+                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
+                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
+                    wrd= re.sub(' {2,}',' ',wrd)
+                    if wrd=='' or len(wrd)<1: continue
+                    for chr in wrd: temp+=chr
+                response=temp
+                del temp
+                
+                train_torch_prompt = tiktoken.get_encoding("gpt2").encode(question)
+                train_torch_target = tiktoken.get_encoding("gpt2").encode(response)
                 del response,question
+                
+                if len(train_torch_prompt)>len(train_torch_target):
+                    for i in range( len(train_torch_prompt)-len(train_torch_target) ): train_torch_target.append(50257)
+                elif len(train_torch_prompt)<len(train_torch_target):
+                    for i in range( len(train_torch_target)-len(train_torch_prompt) ): train_torch_prompt.append(50257)
+                
+                try:
+                    #NOTE: ERROR HERE: IS LIST NOT STRINGBUT NEED BUFFER CHARACTER
+                    train_torch_prompt = torch.from_numpy( np.array(train_torch_prompt, dtype=np.int64) ).type(torch.long)
+                    train_torch_target = torch.from_numpy( np.array(train_torch_target, dtype=np.int64) ).type(torch.long)
+                except Exception as e:
+                    fail_cnt+=1
+                    print(f'char couldnt go in stoi: {fail_cnt}'+str(e))
+                    # print(e)
+                    logger(logpath, f'char couldnt go in stoi: {fail_cnt}'+str(e))
+                    raise KeyError(e)
+                    continue
                 
                 #----------------------------------
                 
@@ -413,8 +440,9 @@ class PT_model_v2:
                 logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 
                 #save
-                if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                if cnt%1000 == 0:
+                    if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -431,19 +459,24 @@ class PT_model_v2:
                 ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
                 x = torch.stack([data[i:i+self.block_size] for i in ix])
                 y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
+            elif self.block_size<PROMPTLIMIT:
+                ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
+                iy = torch.randint(len(data) - self.block_size, (self.batch_size,))
+                x = torch.stack([data[i:i+self.block_size] for i in ix])
+                y = torch.stack([data[i:i+self.block_size] for i in iy])
             else:
                 x = torch.stack([data for i in range(self.batch_size)])
                 y = torch.stack([targets for i in range(self.batch_size)])
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            # print("\n\n============================\nDATA======");print(data[:10])
-            # if targets is None: 
-                # print("\n\n============================\nix======");print(ix[:10])
-                # print("\n\n============================\npre-x======")
-                # t=[data[i:i+self.block_size] for i in ix]
-                # for i in t: print(i.dtype,i)
-            # else: print("\n\n============================\nTARGETS======");print(targets[:10])
+            print("\n\n============================\nDATA======");print(data[:10])
+            if targets is None: 
+                print("\n\n============================\nix======");print(ix[:10])
+                print("\n\n============================\npre-x======")
+                t=[data[i:i+self.block_size] for i in ix]
+                for i in t: print(i.dtype,i)
+            else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
@@ -459,31 +492,27 @@ class PT_model_v2:
         out = losses.mean()
         self.model.train()
         return out
-                       
+                   
 print("tot ML class pass")
 #------------------------------------------------
 
 
 #==========================================================
-VERSION = '2'
+VERSION = '3-tktk'
+NAMU = 'Prompt-RAW'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
-MODEL = PT_model_v2(meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/PTv2__CRC__2024-07-16_21_9__1320.pt',
-        name='_CRC')
+MODEL = PT_model_v3(name='_CRC__Prompt-RAW__')
 print("Model create pass")
                     
 #------------------------
 #!! running
-prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 # input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
-MODEL.train_model_basic(
-    #dir_path="book/gutenburg_BIN/char_64",
-    dir_path="book/gutenburg",
-    savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
-    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
-    start=1321
+MODEL.train_model_prompt(
+    dir_path="prompt/1M-GPT4-Augmented_edit-256-4.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/Prompt-RAW/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_{NAMU}_{datestr()}.txt'
     )
