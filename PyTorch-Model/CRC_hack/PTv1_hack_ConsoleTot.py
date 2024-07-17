@@ -208,9 +208,9 @@ class PT_model_v2:
                 if len(model_list) == 0: raise IndexError("ERROR:  Model Directory is empty, no 'latest' models to choose from")
                 if model_list[-1][-3:] != '.pt': raise IndexError(f"ERROR:  Latest 'Model' is invalid file type: < {model_list[-1][-3:]} >")
                 
-                prLightPurple(model_path+"\\"+model_list[-1])
+                prLightPurple(model_path+"/"+model_list[-1])
                 self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
-                self.model.load_state_dict(  torch.load(model_path+"\\"+model_list[-1], map_location=self.device)  )
+                self.model.load_state_dict(  torch.load(model_path+"/"+model_list[-1], map_location=self.device)  )
                 self.model.eval()
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
@@ -280,7 +280,7 @@ class PT_model_v2:
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
         for txtpath in dirlist:
-            txt=dir_path+"\\"+txtpath
+            txt=dir_path+"/"+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
@@ -467,7 +467,7 @@ VERSION = '1'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
-MODEL = PT_model_v2(meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+MODEL = PT_model_v2(meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
         model_path=dir_path+'/Models/PTv1__CRC__2024-07-08_2_41__765.pt',
         name='_32REF__CRC',
         hyperparameters=[24,32,0.7,1000,30000,100,1e-3,200,64,4,4,0.0])

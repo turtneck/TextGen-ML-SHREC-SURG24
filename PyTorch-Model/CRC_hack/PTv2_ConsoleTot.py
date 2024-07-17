@@ -209,9 +209,9 @@ class PT_model_v2:
                 if len(model_list) == 0: raise IndexError("ERROR:  Model Directory is empty, no 'latest' models to choose from")
                 if model_list[-1][-3:] != '.pt': raise IndexError(f"ERROR:  Latest 'Model' is invalid file type: < {model_list[-1][-3:]} >")
                 
-                prLightPurple(model_path+"\\"+model_list[-1])
+                prLightPurple(model_path+"/"+model_list[-1])
                 self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
-                self.model.load_state_dict(  torch.load(model_path+"\\"+model_list[-1], map_location=self.device)  )
+                self.model.load_state_dict(  torch.load(model_path+"/"+model_list[-1], map_location=self.device)  )
                 self.model.eval()
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
@@ -281,7 +281,7 @@ class PT_model_v2:
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
         for txtpath in dirlist:
-            txt=dir_path+"\\"+txtpath
+            txt=dir_path+"/"+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
@@ -436,13 +436,13 @@ class PT_model_v2:
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            print("\n\n============================\nDATA======");print(data[:10])
-            if targets is None: 
-                print("\n\n============================\nix======");print(ix[:10])
-                print("\n\n============================\npre-x======")
-                t=[data[i:i+self.block_size] for i in ix]
-                for i in t: print(i.dtype,i)
-            else: print("\n\n============================\nTARGETS======");print(targets[:10])
+            # print("\n\n============================\nDATA======");print(data[:10])
+            # if targets is None: 
+                # print("\n\n============================\nix======");print(ix[:10])
+                # print("\n\n============================\npre-x======")
+                # t=[data[i:i+self.block_size] for i in ix]
+                # for i in t: print(i.dtype,i)
+            # else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
@@ -468,15 +468,15 @@ VERSION = '2'
 THREADS = 24 #ADJUST
 dir_path = os.path.abspath("")
 
-MODEL = PT_model_v2(meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/PTv2__CRC_2024-07-08_17_21__1113.pt',
+MODEL = PT_model_v2(meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+        model_path=dir_path+'/Models/PTv2__CRC__2024-07-16_21_9__1320.pt',
         name='_CRC')
 print("Model create pass")
                     
 #------------------------
 #!! running
 prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
-input("Ready to run training? <ENTER>")
+# input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
 MODEL.train_model_basic(
@@ -484,5 +484,5 @@ MODEL.train_model_basic(
     dir_path="book/gutenburg",
     savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
     logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
-    start=1114
+    start=1321
     )

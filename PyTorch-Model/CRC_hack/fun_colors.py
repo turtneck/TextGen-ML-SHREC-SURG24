@@ -14,7 +14,7 @@ def prBlack(skk): print("\033[98m{}\033[00m" .format(skk))
 
 
 #mine
-def prALERT(skk):print(Back.RED+skk+Style.RESET_ALL)
+def prALERT(skk):print(skk)
 def gdFL(fl): return f"{'{:.2f}'.format(float( fl ))}"
 
 def logger(filepath,text):
@@ -84,7 +84,8 @@ def csv_size(filepath):
         df_iter = pandas.read_csv(filepath)
         return df_iter.shape[0]
     except Exception as e:
-        prALERT('csv_size\n'+e)
+        prALERT('csv_size\n')
+        print(e)
         sze=0
         df_iter = pandas.read_csv(filepath, iterator=True, chunksize=1)
         while True:

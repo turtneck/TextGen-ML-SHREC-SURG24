@@ -11,7 +11,7 @@ print(f"DIRECTORY:\t\t<{dir_path}>")
 sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
-
+PROMPTLIMIT=256
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 '''
@@ -95,9 +95,9 @@ class PT_model_v2:
                 if len(model_list) == 0: raise IndexError("ERROR:  Model Directory is empty, no 'latest' models to choose from")
                 if model_list[-1][-3:] != '.pt': raise IndexError(f"ERROR:  Latest 'Model' is invalid file type: < {model_list[-1][-3:]} >")
                 
-                prLightPurple(model_path+"\\"+model_list[-1])
+                prLightPurple(model_path+"/"+model_list[-1])
                 self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
-                self.model.load_state_dict(  torch.load(model_path+"\\"+model_list[-1], map_location=self.device)  )
+                self.model.load_state_dict(  torch.load(model_path+"/"+model_list[-1], map_location=self.device)  )
                 self.model.eval()
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
@@ -167,7 +167,7 @@ class PT_model_v2:
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
         for txtpath in dirlist:
-            txt=dir_path+"\\"+txtpath
+            txt=dir_path+"/"+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
@@ -250,7 +250,7 @@ class PT_model_v2:
         else: logger(logpath,   f"No hyperparameters given during objects INIT")
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
-        
+        fail_cnt=0
         #NOTE: [!!!!] iterate through dataset
         while True:
             try:
@@ -260,17 +260,50 @@ class PT_model_v2:
                 
                 df = next(df_iter)
                 
-                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
-                response = list( list(df.response)[0] )
+                # question = list( list(df.question)[0] ) #annoying conversion from array of strings to an array of chars
+                # response = list( list(df.response)[0] )
+                question = str( list(df.question)[0] )#annoying conversion from array of strings to an array of chars
+                response = str( list(df.response)[0] )
+                
+                #cleanup
+                temp=''
+                for wrd in question:
+                    for i in ['™']: wrd=wrd.replace(i,"")
+                    for i in ['“','”']: wrd=wrd.replace(i,'"')
+                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
+                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
+                    wrd= re.sub(' {2,}',' ',wrd)
+                    if wrd=='' or len(wrd)<1: continue
+                    for chr in wrd: temp+=chr
+                question=list(temp)
+                temp=''
+                for wrd in response:
+                    for i in ['™']: wrd=wrd.replace(i,"")
+                    for i in ['“','”']: wrd=wrd.replace(i,'"')
+                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
+                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
+                    wrd= re.sub(' {2,}',' ',wrd)
+                    if wrd=='' or len(wrd)<1: continue
+                    for chr in wrd: temp+=chr
+                response=list(temp)
+                del temp
+                
                 if len(question)>len(response):
                     for i in range( len(question)-len(response) ): response.append('')
                 elif len(question)<len(response):
                     for i in range( len(response)-len(question) ): question.append('')
                 # print('xy size',len(response),len(question))
                 
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
-                del response,question
+                try:
+                    train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
+                    train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
+                    del response,question
+                except Exception as e:
+                    fail_cnt+=1
+                    print(f'char couldnt go in stoi: {fail_cnt}'+str(e))
+                    # print(e)
+                    logger(logpath, f'char couldnt go in stoi: {fail_cnt}'+str(e))
+                    continue
                 
                 #----------------------------------
                 
@@ -298,8 +331,9 @@ class PT_model_v2:
                 logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 
                 #save
-                if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                if cnt%1000 == 0:
+                    if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -316,6 +350,11 @@ class PT_model_v2:
                 ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
                 x = torch.stack([data[i:i+self.block_size] for i in ix])
                 y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
+            elif self.block_size<PROMPTLIMIT:
+                ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
+                iy = torch.randint(len(data) - self.block_size, (self.batch_size,))
+                x = torch.stack([data[i:i+self.block_size] for i in ix])
+                y = torch.stack([data[i:i+self.block_size] for i in iy])
             else:
                 x = torch.stack([data for i in range(self.batch_size)])
                 y = torch.stack([targets for i in range(self.batch_size)])
@@ -473,14 +512,14 @@ class BigramLanguageModel(nn.Module):
 
 if __name__ == "__main__":
     # mod = PT_model_v2(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl")
-    # mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64")
+    # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64")
     
     
     mod = PT_model_v2(
         meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
-        model_path=r"C:\\Users\\jump3\Desktop\\TextGen-ML-SHREC-SURG24\\PyTorch-Model\\Models\\PTv1__CRC__2024-07-08_2_41__765.pt"
+        model_path=r"C:/Users/jump3\Desktop/TextGen-ML-SHREC-SURG24/PyTorch-Model/Models/PTv1__CRC__2024-07-08_2_41__765.pt"
     )
     
-    # mod.train_model_basic(getDrive()+"book\\gutenburg_BIN\\char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads\\PTv1_batchTrain_TEST.txt',end=1)
+    # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads/PTv1_batchTrain_TEST.txt',end=1)
 
     print( mod.run_model() )
