@@ -401,13 +401,14 @@ class PT_model_v2:
                 question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
                 response = list( list(df.response)[0] )
                 
-                question = list( data_clean(str(question)) )
-                response = list( data_clean(str(response)) )
+                question = list( data_clean(''.join(question)) )
+                response = list( data_clean(''.join(response)) )
                 
                 if len(question)>len(response):
                     for i in range( len(question)-len(response) ): response.append('')
                 elif len(question)<len(response):
                     for i in range( len(response)-len(question) ): question.append('')
+                
                 # print('xy size',len(response),len(question))
                 train_torch_prompt = self.PT_encode(question)
                 train_torch_target = self.PT_encode(response)
@@ -448,7 +449,8 @@ class PT_model_v2:
                 cnt+=1
             except StopIteration:
                 break
-            
+    
+    
     #====================================================================================================================
     #add target arg if training for prompts
     def get_batch(self,data, targets=None):
