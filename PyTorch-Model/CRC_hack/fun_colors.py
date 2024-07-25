@@ -1,7 +1,7 @@
 # holder file for easier printing of colored terminal text for readibility
 # taken from: https://www.geeksforgeeks.org/print-colors-python-terminal/
 
-import pickle,datetime,os,pandas
+import pickle,datetime,os,pandas,re
 # from colorama import Fore, Back, Style
 def prRed(skk): print("\033[91m{}\033[00m" .format(skk))
 def prGreen(skk): print("\033[92m{}\033[00m" .format(skk))
@@ -99,3 +99,11 @@ def csv_size(filepath):
 def parquet_size(filepath):
     df = pandas.read_parquet(filepath)
     return df.shape[0]
+
+def data_clean(data:str):
+    for i in ['™']: data=data.replace(i,"")
+    for i in ['“','”']: data=data.replace(i,'"')
+    for i in ['‘','’']: data=data.replace(i,"'")
+    for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
+    data= re.sub(' {2,}',' ',data)
+    return data

@@ -118,7 +118,7 @@ class BigramLanguageModel(nn.Module):
             logits = logits.view(B*T, C)
             targets = targets.view(B*T)
             loss = F.cross_entropy(logits, targets)
-
+        print('logits',logits)
         return logits, loss
 
     def generate(self, idx, max_new_tokens):
@@ -127,6 +127,7 @@ class BigramLanguageModel(nn.Module):
             # crop idx to the last block_size tokens
             idx_cond = idx[:, -self.block_size:]
             # get the predictions
+            print('idx_cond',idx_cond)
             logits, loss = self(idx_cond)
             # focus only on the last time step
             logits = logits[:, -1, :] # becomes (B, C)
@@ -137,195 +138,6 @@ class BigramLanguageModel(nn.Module):
             # append sampled index to the running sequence
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
-#==========================================================
-
-class PT_model_v1:
-    def __init__(self, meta_data, hyperparameters=PTV1_HYPER_DEF, model_path=None):
-        # defaults ---------------------
-        torch.manual_seed(1337)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
-                    
-        # hyperparameters ---------------------
-        self.batch_size =   hyperparameters[0] # how many independent sequences will we process in parallel?
-        self.block_size =   hyperparameters[1] # what is the maximum context length for predictions?
-        self.goal =         hyperparameters[2]
-        self.min_iters =    hyperparameters[3]
-        self.max_iters =    hyperparameters[4]
-        self.eval_interval= hyperparameters[5]
-        learning_rate= hyperparameters[6]
-        self.eval_iters =   hyperparameters[7]
-        self.n_embd =       hyperparameters[8]
-        self.n_head =       hyperparameters[9]
-        self.n_layer =      hyperparameters[10]
-        self.dropout =      hyperparameters[11]
-        self.hyperparameters = hyperparameters
-            
-        # meta data ---------------------
-        with open(meta_data, 'rb') as f: meta = pickle.load(f)
-        self.stoi = meta['stoi']
-        self.itos = meta['itos']
-        self.vocab_size = meta['vocab_size']
-        if meta['int'] == 8: self.mdtype=np.int8
-        elif meta['int'] == 16: self.mdtype=np.int16
-        elif meta['int'] == 32: self.mdtype=np.int32
-        elif meta['int'] == 64: self.mdtype=np.int64
-        elif meta['int'] == 128: self.mdtype=np.int128
-        elif meta['int'] == 256: self.mdtype=np.int256
-        else: raise TypeError(f"unknown meta data type signed: {meta['int']}")
-        prGreen(hyperparameters)
-            
-        # Model ---------------------
-        if model_path == None:
-            #make new model
-            if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
-        
-            self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
-            self.m = self.model.to(self.device)
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
-            
-            print("SUCCESS: MODEL CREATED")
-        else:
-            #load model from file
-            prALERT("Please double check your   < hyperparameters >   are aligned with saved model")
-            prLightPurple(model_path)
-            self.model = torch.load(model_path, map_location=self.device)
-            self.model.eval()
-            self.m = self.model.to(self.device)
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
-            
-            print("SUCCESS: MODEL LOADED")
-            
-    
-    
-    # ========================================
-    def save_model(self,dir_path):
-        torch.save(self.model, dir_path)
-    
-    
-    # ========================================
-    def load_model(self,dir_path):
-        self.model = torch.load(dir_path)
-        self.model.eval()
-        self.m = self.model.to(self.device)
-    
-    
-    # ========================================
-    def run_model(self,length=2000):
-        context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-        return fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
-    
-    
-    # ========================================
-    def train_model(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
-        prGreen(f'train_dir: {dir_path}')
-        prGreen(f'savepath: {savepath}')
-        dirlist=os.listdir(dir_path)
-        sze=len(dirlist)-1
-        cnt=start
-        
-        if end: dirlist=dirlist[start:end]
-        else: dirlist=dirlist[start:]
-        
-        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/PTv1-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
-        prGreen(f'logpath: {logpath}')
-        script_time=time.time()
-        file_helper( logpath )#if log doesnt exist make it
-        if self.hyperparameters: logger(logpath,   f"{self.hyperparameters}")
-        else: logger(logpath,   f"No hyperparameters given during objects INIT")
-        logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
-        
-        for txtpath in dirlist:
-            txt=dir_path+"\\"+txtpath
-            prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
-            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
-            start_time=time.time()
-            
-            print( txtpath[-4:] )
-            if txtpath[-4:] == '.txt':
-                # print(".txt file")
-                with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
-                data = ''.join(data)
-                #cleanup
-                for i in ['™']: data=data.replace(i,"")
-                for i in ['“','”']: data=data.replace(i,'"')
-                for i in ['‘','’']: data=data.replace(i,"'")
-                for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
-                data= re.sub(' {2,}',' ',data)
-                
-                train_data_torch = fun_encode(data, self.stoi)
-                train_data_torch = torch.from_numpy( np.array(train_data_torch, dtype=np.int64) ).type(torch.long)
-            elif txtpath[-4:] == '.bin':
-                # print(".bin file")
-                train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
-            
-            #actual training
-            for iter in range(self.max_iters):
-                # every once in a while evaluate the loss on train and val sets
-                if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
-                    losses = self.estimate_loss(train_data_torch)
-                    nowtime=time.time()
-                    prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/self.max_iters )}%>  step {iter}/{self.max_iters}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                    logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-
-                # sample a batch of data
-                xb, yb = self.get_batch(train_data_torch)
-
-                # evaluate the loss
-                logits, self.loss = self.model(xb, yb)
-                self.optimizer.zero_grad(set_to_none=True)
-                self.loss.backward()
-                self.optimizer.step()
-                if losses <= self.goal: break
-            #post
-            nowtime=time.time()
-            prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            
-            #save
-            if savepath: self.save_model(savepath+f'PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(getDrive()+f'Models\PyTorch_v1/PTv1__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            nowtime=time.time()
-            prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            cnt+=1
-            
-    #==========================================================
-    def get_batch(self,data):
-        try:
-            # generate a small batch of data of inputs x and targets y
-            ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
-            x = torch.stack([data[i:i+self.block_size] for i in ix])
-            y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
-            x, y = x.to(self.device), y.to(self.device)
-            return x, y
-        except Exception as e:
-            # print('SPLITTTT', split)
-            # print('ix',ix)
-            # t=[data[i:i+block_size] for i in ix]
-            # for i in t: print(i.dtype,i)
-            # print('pre-x',[data[i:i+block_size] for i in ix])
-            # print('x',x)
-            # print('y',y)
-            print("\n\n============================\nDATA======");print(data)
-            print("\n\n============================\nix======");print(ix)
-            print("\n\n============================\npre-x======")
-            t=[data[i:i+self.block_size] for i in ix]
-            for i in t: print(i.dtype,i)
-            print(e)
-
-    @torch.no_grad()
-    def estimate_loss(self,data):
-        self.model.eval()
-        losses = torch.zeros(self.eval_iters)
-        for k in range(self.eval_iters):
-            X, Y = self.get_batch(data)
-            logits, self.loss = self.model(X, Y)
-            losses[k] = self.loss.item()
-        out = losses.mean()
-        self.model.train()
-        return out
-          
 #==========================================================
 
 class PT_model_v2:
@@ -366,7 +178,8 @@ class PT_model_v2:
         prGreen(hyperparameters)
         
         # name ---------------------
-        self.name = 'PTv2_'+name
+        if name is None: self.name = 'PTv2'
+        else: self.name = 'PTv2_'+name
             
         # Model ---------------------
         if model_path == None:
@@ -393,9 +206,9 @@ class PT_model_v2:
                 if len(model_list) == 0: raise IndexError("ERROR:  Model Directory is empty, no 'latest' models to choose from")
                 if model_list[-1][-3:] != '.pt': raise IndexError(f"ERROR:  Latest 'Model' is invalid file type: < {model_list[-1][-3:]} >")
                 
-                prLightPurple(model_path+"\\"+model_list[-1])
+                prLightPurple(model_path+"/"+model_list[-1])
                 self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
-                self.model.load_state_dict(  torch.load(model_path+"\\"+model_list[-1], map_location=self.device)  )
+                self.model.load_state_dict(  torch.load(model_path+"/"+model_list[-1], map_location=self.device)  )
                 self.model.eval()
                 self.m = self.model.to(self.device)
                 self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
@@ -438,10 +251,23 @@ class PT_model_v2:
     
     
     # ========================================
-    def run_model(self,length=2000):
-        context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-        return fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
+    def run_model(self,data=None,length=256):
+        if data is None:
+            context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
+            return fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
+        else:
+            context = list( data_clean(data) )
+            if len(context)<256:
+                for i in range( 256-len(context) ): context.append('')
+            context = self.PT_encode(context)
+            context= self.get_batch(context,context)[0]
+            print('context',context)
+            target = fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
+            target = target[len(data):]
+            return ('Q: '+data+'\nA: '+target )
     
+    def PT_encode(self,data):
+        return torch.from_numpy( np.array(fun_encode(data, self.stoi), dtype=np.int64) ).type(torch.long)
     
     # ==================================================================================================
     #NOTE: train model from the procedding character (finishing)
@@ -465,7 +291,7 @@ class PT_model_v2:
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
         for txtpath in dirlist:
-            txt=dir_path+"\\"+txtpath
+            txt=dir_path+"/"+txtpath
             prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
             logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
             start_time=time.time()
@@ -476,14 +302,8 @@ class PT_model_v2:
                 with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
                 data = ''.join(data)
                 #cleanup
-                for i in ['™']: data=data.replace(i,"")
-                for i in ['“','”']: data=data.replace(i,'"')
-                for i in ['‘','’']: data=data.replace(i,"'")
-                for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
-                data= re.sub(' {2,}',' ',data)
-                
-                train_data_torch = fun_encode(data, self.stoi)
-                train_data_torch = torch.from_numpy( np.array(train_data_torch, dtype=np.int64) ).type(torch.long)
+                data = data_clean(data)
+                train_data_torch = self.PT_encode(data)
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
                 train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
@@ -560,14 +380,17 @@ class PT_model_v2:
                 
                 question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
                 response = list( list(df.response)[0] )
+                
+                question = list( data_clean(str(question)) )
+                response = list( data_clean(str(response)) )
+                
                 if len(question)>len(response):
                     for i in range( len(question)-len(response) ): response.append('')
                 elif len(question)<len(response):
                     for i in range( len(response)-len(question) ): question.append('')
                 # print('xy size',len(response),len(question))
-                
-                train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
-                train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
+                train_torch_prompt = self.PT_encode(question)
+                train_torch_target = self.PT_encode(response)
                 del response,question
                 
                 #----------------------------------
@@ -620,13 +443,13 @@ class PT_model_v2:
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            print("\n\n============================\nDATA======");print(data[:10])
-            if targets is None: 
-                print("\n\n============================\nix======");print(ix[:10])
-                print("\n\n============================\npre-x======")
-                t=[data[i:i+self.block_size] for i in ix]
-                for i in t: print(i.dtype,i)
-            else: print("\n\n============================\nTARGETS======");print(targets[:10])
+            # print("\n\n============================\nDATA======");print(data[:10])
+            # if targets is None: 
+                # print("\n\n============================\nix======");print(ix[:10])
+                # print("\n\n============================\npre-x======")
+                # t=[data[i:i+self.block_size] for i in ix]
+                # for i in t: print(i.dtype,i)
+            # else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
@@ -642,31 +465,54 @@ class PT_model_v2:
         out = losses.mean()
         self.model.train()
         return out
-             
+                                
 #==========================================================
 
 
 
 #===============================================================================
 
-print( os.listdir(dir_path+'/Models'))
+# print( os.listdir(dir_path+'/Models'))
 
-for i in os.listdir(dir_path+'/Models'):
-    if i[-3:] !='.pt':
-        prALERT('FAIL:'+i[-3:])
-        continue
-    if i[3] == '1':
-        print('1',i[3])
-        MODEL = PT_model_v1(
-        meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/'+i
+# for i in os.listdir(dir_path+'/Models'):
+#     if i[-3:] !='.pt':
+#         prALERT('FAIL:'+i[-3:])
+#         continue
+#     if i[3] == '1':
+#         print('1',i[3])
+#         MODEL = PT_model_v1(
+#         meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+#         model_path=dir_path+'/Models/'+i
+#         )
+#     elif i[3] == '2':
+#         print('2',i[3])
+#         MODEL = PT_model_v2(
+#         meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+#         model_path=dir_path+'/Models/'+i
+#         )
+#     else: prALERT('FAIL:'+i[3])
+#     prGreen(i)
+#     print( MODEL.run_model() )
+
+
+
+# VERSION = '2'
+# THREADS = 24 #ADJUST
+# mod.train_model_basic(
+#     #dir_path="book/gutenburg_BIN/char_64",
+#     dir_path="book/gutenburg",
+#     savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
+#     logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt',
+#     start=1321
+#     )
+
+# path_dir= 'PTv2__CRC__Prompt-RAW____2024-07-20_3_36__43000.pt'
+path_dir= 'PTv2__CRC__2024-07-20_4_16__1790.pt'
+mod = PT_model_v2(
+        meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+        model_path='Models/'+path_dir,
+        name='CRC-test_7-24'
         )
-    elif i[3] == '2':
-        print('2',i[3])
-        MODEL = PT_model_v2(
-        meta_data="D:/book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/'+i
-        )
-    else: prALERT('FAIL:'+i[3])
-    prGreen(i)
-    print( MODEL.run_model() )
+
+#print( mod.run_model() )
+print( mod.run_model('Whats the answer to life') )

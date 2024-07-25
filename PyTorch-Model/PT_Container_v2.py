@@ -31,7 +31,7 @@ could have just kept this as v1, but felt there was enough changes to just make 
 
 #===============================================================================
 class PT_model_v2:
-    def __init__(self, meta_data, hyperparameters=PTV2_HYPER_DEF, model_path=None,name=None):
+    def __init__(self, meta_data, hyperparameters=PTV2_HYPER_DEF, model_path=None,name=None,buffer=None):
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -53,6 +53,7 @@ class PT_model_v2:
         self.dropout =      hyperparameters[11]
         self.hyperparameters = hyperparameters
             
+            
         # meta data ---------------------
         with open(meta_data, 'rb') as f: meta = pickle.load(f)
         self.stoi = meta['stoi']
@@ -65,10 +66,15 @@ class PT_model_v2:
         elif meta['int'] == 128: self.mdtype=np.int128
         elif meta['int'] == 256: self.mdtype=np.int256
         else: raise TypeError(f"unknown meta data type signed: {meta['int']}")
+        # buffer ---------------------
+        if buffer is None: self.buffer = self.vocab_size-1
+        else: self.buffer = buffer
+        # hypers ---------------------
         prGreen(hyperparameters)
-        
         # name ---------------------
-        self.name = 'PTv2_'+name
+        if name is None: self.name = 'PTv2'
+        else: self.name = 'PTv2_'+name
+            
             
         # Model ---------------------
         if model_path == None:
@@ -140,15 +146,36 @@ class PT_model_v2:
     
     
     # ========================================
-    def run_model(self,length=2000):
-        context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-        return fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
+    def run_model(self,data=None,length=256):
+        if data is None:
+            context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
+            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            return ('GEN:~'+target )
+        else:
+            context = list( data_clean(data) )
+            if len(context)<256:
+                for i in range( 256-len(context) ): context.append('')
+            context = self.PT_encode(context)
+            context= self.get_batch(context,context)[0]
+            
+            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            # target = target[len(data):]
+            return ('Q:~'+data+'\nA:~'+target )
     
+    def PT_encode(self,data):
+        return torch.from_numpy( np.array(fun_encode(data, self.stoi), dtype=np.int64) ).type(torch.long)
+    
+    def PT_decode(self,data):
+        try:
+            data=data[:data.index(self.buffer)+1]   #cut off
+        except Exception:
+            target_index = None
+        return fun_decode(data,self.itos)
     
     # ==================================================================================================
     #NOTE: train model from the procedding character (finishing)
     #txt or int64 encoded bin array
-    def train_model_basic(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
+    def train_model_basic(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000):
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
         dirlist=os.listdir(dir_path)
@@ -178,14 +205,8 @@ class PT_model_v2:
                 with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
                 data = ''.join(data)
                 #cleanup
-                for i in ['™']: data=data.replace(i,"")
-                for i in ['“','”']: data=data.replace(i,'"')
-                for i in ['‘','’']: data=data.replace(i,"'")
-                for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
-                data= re.sub(' {2,}',' ',data)
-                
-                train_data_torch = fun_encode(data, self.stoi)
-                train_data_torch = torch.from_numpy( np.array(train_data_torch, dtype=np.int64) ).type(torch.long)
+                data = data_clean(data)
+                train_data_torch = self.PT_encode(data)
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
                 train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
@@ -215,18 +236,19 @@ class PT_model_v2:
             logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
-            if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            nowtime=time.time()
-            prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            if cnt%save_iter == 0:
+                if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                nowtime=time.time()
+                prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             cnt+=1
     
     
     # ========================================
     #NOTE: train model from 'Q&A' Prompts
     #csv
-    def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
+    def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000):
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
         
@@ -250,7 +272,7 @@ class PT_model_v2:
         else: logger(logpath,   f"No hyperparameters given during objects INIT")
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
-        fail_cnt=0
+        
         #NOTE: [!!!!] iterate through dataset
         while True:
             try:
@@ -260,50 +282,21 @@ class PT_model_v2:
                 
                 df = next(df_iter)
                 
-                # question = list( list(df.question)[0] ) #annoying conversion from array of strings to an array of chars
-                # response = list( list(df.response)[0] )
-                question = str( list(df.question)[0] )#annoying conversion from array of strings to an array of chars
-                response = str( list(df.response)[0] )
+                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
+                response = list( list(df.response)[0] )
                 
-                #cleanup
-                temp=''
-                for wrd in question:
-                    for i in ['™']: wrd=wrd.replace(i,"")
-                    for i in ['“','”']: wrd=wrd.replace(i,'"')
-                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
-                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
-                    wrd= re.sub(' {2,}',' ',wrd)
-                    if wrd=='' or len(wrd)<1: continue
-                    for chr in wrd: temp+=chr
-                question=list(temp)
-                temp=''
-                for wrd in response:
-                    for i in ['™']: wrd=wrd.replace(i,"")
-                    for i in ['“','”']: wrd=wrd.replace(i,'"')
-                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
-                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
-                    wrd= re.sub(' {2,}',' ',wrd)
-                    if wrd=='' or len(wrd)<1: continue
-                    for chr in wrd: temp+=chr
-                response=list(temp)
-                del temp
+                question = list( data_clean(''.join(question)) )
+                response = list( data_clean(''.join(response)) )
                 
                 if len(question)>len(response):
                     for i in range( len(question)-len(response) ): response.append('')
                 elif len(question)<len(response):
                     for i in range( len(response)-len(question) ): question.append('')
-                # print('xy size',len(response),len(question))
                 
-                try:
-                    train_torch_prompt = torch.from_numpy( np.array(fun_encode(question, self.stoi), dtype=np.int64) ).type(torch.long)
-                    train_torch_target = torch.from_numpy( np.array(fun_encode(response, self.stoi), dtype=np.int64) ).type(torch.long)
-                    del response,question
-                except Exception as e:
-                    fail_cnt+=1
-                    print(f'char couldnt go in stoi: {fail_cnt}'+str(e))
-                    # print(e)
-                    logger(logpath, f'char couldnt go in stoi: {fail_cnt}'+str(e))
-                    continue
+                # print('xy size',len(response),len(question))
+                train_torch_prompt = self.PT_encode(question)
+                train_torch_target = self.PT_encode(response)
+                del response,question
                 
                 #----------------------------------
                 
@@ -331,16 +324,17 @@ class PT_model_v2:
                 logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 
                 #save
-                if cnt%1000 == 0:
+                if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                nowtime=time.time()
-                prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    nowtime=time.time()
+                    prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 cnt+=1
             except StopIteration:
                 break
-            
+    
+    
     #====================================================================================================================
     #add target arg if training for prompts
     def get_batch(self,data, targets=None):
@@ -350,24 +344,19 @@ class PT_model_v2:
                 ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
                 x = torch.stack([data[i:i+self.block_size] for i in ix])
                 y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
-            elif self.block_size<PROMPTLIMIT:
-                ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
-                iy = torch.randint(len(data) - self.block_size, (self.batch_size,))
-                x = torch.stack([data[i:i+self.block_size] for i in ix])
-                y = torch.stack([data[i:i+self.block_size] for i in iy])
             else:
                 x = torch.stack([data for i in range(self.batch_size)])
                 y = torch.stack([targets for i in range(self.batch_size)])
             x, y = x.to(self.device), y.to(self.device)
             return x, y
         except Exception as e:
-            print("\n\n============================\nDATA======");print(data[:10])
-            if targets is None: 
-                print("\n\n============================\nix======");print(ix[:10])
-                print("\n\n============================\npre-x======")
-                t=[data[i:i+self.block_size] for i in ix]
-                for i in t: print(i.dtype,i)
-            else: print("\n\n============================\nTARGETS======");print(targets[:10])
+            # print("\n\n============================\nDATA======");print(data[:10])
+            # if targets is None: 
+                # print("\n\n============================\nix======");print(ix[:10])
+                # print("\n\n============================\npre-x======")
+                # t=[data[i:i+self.block_size] for i in ix]
+                # for i in t: print(i.dtype,i)
+            # else: print("\n\n============================\nTARGETS======");print(targets[:10])
             print(e)
 
     
@@ -383,7 +372,7 @@ class PT_model_v2:
         out = losses.mean()
         self.model.train()
         return out
-            
+                     
 #==========================================================
 class Head(nn.Module):
     """ one head of self-attention """
@@ -516,10 +505,18 @@ if __name__ == "__main__":
     
     
     mod = PT_model_v2(
-        meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
-        model_path=r"C:/Users/jump3\Desktop/TextGen-ML-SHREC-SURG24/PyTorch-Model/Models/PTv1__CRC__2024-07-08_2_41__765.pt"
+        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl"
     )
     
     # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads/PTv1_batchTrain_TEST.txt',end=1)
-
+    
+    mod.train_model_prompt(
+    dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256.csv",
+    logpath=getDrive()+f'SFT_test.txt'
+    )
+    
+    # print( mod.stoi )
+    # print( mod.vocab_size )
     print( mod.run_model() )
+    print( mod.run_model('hi') )
+    print( mod.run_model('how are you') )
