@@ -191,7 +191,7 @@ class PT_model_v2:
         if end:
             if end>len(dirlist)-1: raise ValueError("End past size of data")
             dirlist=dirlist[start:end]
-            sze=end
+            sze=end-1
         else:
             dirlist=dirlist[start:]
             sze=len(dirlist)-1
@@ -206,8 +206,8 @@ class PT_model_v2:
         
         for txtpath in dirlist:
             txt=dir_path+"/"+txtpath
-            prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
-            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
+            prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t{txt}...")
+            logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t{txt}...======================================")
             start_time=time.time()
             
             print( txtpath[-4:] )
@@ -229,7 +229,7 @@ class PT_model_v2:
                 if iter % self.eval_interval == 0 or iter == max_iters - 1:
                     losses = self.estimate_loss(train_data_torch)
                     nowtime=time.time()
-                    prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                 # sample a batch of data
@@ -270,7 +270,7 @@ class PT_model_v2:
         if dir_path[-4:] == '.csv':
             if end:
                 if end>csv_size(dir_path): raise ValueError("End past size of data")
-                sze=end
+                sze=end-1
             else: sze = csv_size(dir_path) #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
@@ -294,8 +294,8 @@ class PT_model_v2:
             try:
                 if not end is None:
                     if cnt >= end: break
-                prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...")
-                logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...======================================")
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
                 start_time=time.time()                    
                 
                 df = next(df_iter)
@@ -329,7 +329,7 @@ class PT_model_v2:
                     if iter % self.eval_interval == 0 or iter == max_iters - 1:
                         losses = self.estimate_loss(train_torch_prompt,train_torch_target)
                         nowtime=time.time()
-                        prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                         logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                     # sample a batch of data
@@ -372,7 +372,7 @@ class PT_model_v2:
         if dir_path[-4:] == '.csv':
             if end:
                 if end>csv_size(dir_path): raise ValueError("End past size of data")
-                sze=end
+                sze=end-1
             else: sze = csv_size(dir_path) #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
@@ -396,8 +396,8 @@ class PT_model_v2:
             try:
                 if not end is None:
                     if cnt >= end: break
-                prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...")
-                logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...======================================")
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
                 start_time=time.time()
                 
                 df = next(df_iter)
@@ -424,7 +424,7 @@ class PT_model_v2:
                     if iter % self.eval_interval == 0 or iter == max_iters - 1:
                         losses = self.estimate_loss(train_torch_input)
                         nowtime=time.time()
-                        prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                         logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                     # sample a batch of data
@@ -458,13 +458,22 @@ class PT_model_v2:
     def get_batch(self,data, targets=None):
         # generate a small batch of data of inputs x and targets y
         if targets is None:
-            ix = torch.randint( abs(len(data) - self.block_size), (self.batch_size,))
+            # prCyan(f'{len(data)}')
+            # prCyan(f'{data}')
+            if len(data) - self.block_size >0:ix = torch.randint( len(data) - self.block_size, (self.batch_size,))
+            elif len(data) - self.block_size ==0:
+                ix = [0]*self.batch_size
+                data = torch.cat((data,torch.tensor([self.buffer])))
+            else: raise ValueError("!!!![ERROR] get_batch(), target=None: len(data)<self.block_size")
             x = torch.stack([data[i:i+self.block_size] for i in ix])
             y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
         else:
             x = torch.stack([data for i in range(self.batch_size)])
             y = torch.stack([targets for i in range(self.batch_size)])
         x, y = x.to(self.device), y.to(self.device)
+        # prLightPurple(f'x:~{x}\ny:~{y}')
+        # prPurple(f'2x:~{len(x)}, y:~{len(y)}')
+        # prPurple(f'3x:~{len(x[0])}, y:~{len(y[0])}')
         return x, y
 
     
@@ -615,33 +624,37 @@ if __name__ == "__main__":
     mod = PT_model_v2(
         meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl"
     )
-    prCyan(mod.vocab_size)
+    prCyan(f'vocab: {mod.vocab_size}')
+    prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
+    prCyan(f'buffr: {mod.buffer}')
+    prCyan(f'SOStk: {mod.SOS}')
     
-    prRed("Basic")
-    mod.train_model_basic(
-        dir_path=getDrive()+"book/gutenburg",
-        logpath=getDrive()+f'v2testing.txt',
-        end=10,
-        max_iters=1
-        )
+    # prRed("\nBasic")
+    # mod.train_model_basic(
+    #     dir_path=getDrive()+"book/gutenburg",
+    #     logpath=getDrive()+f'v2testing.txt',
+    #     end=10,
+    #     max_iters=1
+    #     )
     
-    prRed("Prompv1: 1")
-    mod.train_model_prompt(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-        logpath=getDrive()+f'v2testing.txt',
-        end=10,
-        max_iters=1
-        )
+    # prRed("\nPrompv1: 1")
+    # mod.train_model_prompt(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
+    #     logpath=getDrive()+f'v2testing.txt',
+    #     end=10,
+    #     max_iters=1
+    #     )
     
-    prRed("Prompv2: 1")
+    prRed("\nPrompv2: 1")
     mod.train_model_prompt2(
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
         logpath=getDrive()+f'v2testing.txt',
+        start=2,
         end=10,
         max_iters=1
         )
     
-    prRed("Prompv1: 2")
+    prRed("\nPrompv1: 2")
     mod.train_model_prompt(
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
         logpath=getDrive()+f'v2testing.txt',
@@ -649,7 +662,7 @@ if __name__ == "__main__":
         max_iters=1
         )
     
-    prRed("Prompv2: 2")
+    prRed("\nPrompv2: 2")
     mod.train_model_prompt2(
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
         logpath=getDrive()+f'v2testing.txt',
