@@ -319,7 +319,6 @@ class PT_model_v2:
                 train_torch_prompt = self.PT_encode(question)
                 train_torch_target = self.PT_encode(response)
                 del response,question
-                prYellow(f'q: {len(train_torch_prompt)}, a: {len(train_torch_target)}')
                 
                 
                 #----------------------------------
@@ -481,7 +480,7 @@ class PT_model_v2:
         out = losses.mean()
         self.model.train()
         return out
-                     
+
 #==========================================================
 class Head(nn.Module):
     """ one head of self-attention """

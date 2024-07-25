@@ -6,7 +6,6 @@ import pandas as pd
 import csv,os,sys,time,datetime,multiprocessing,re
 import numpy as np
 from fun_colors import *
-PROMPTLIMIT=256
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 print("import pass")
 #------------------------------------------------
@@ -604,9 +603,11 @@ print("tot ML class pass")
 #==========================================================
 VERSION = '2'
 dir_path = os.path.abspath("")
+modelname=''
 
 MODEL = PT_model_v2(meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        name='_CRC-pretrain2')
+        model_path=dir_path+'/Models/'+modelname,
+        name='_CRC-SFT2-type1')
 print("Model create pass")
                     
 #------------------------
@@ -615,8 +616,23 @@ prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 # input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
-MODEL.train_model_basic(
-    dir_path="book/gutenburg",
-    savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
-    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_{datestr()}.txt'
+MODEL.train_model_prompt(
+    dir_path="prompt/1M-GPT4-Augmented_edit-256-1.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1_{datestr()}.txt',
+    save_iter=10000
+    )
+
+MODEL.train_model_prompt(
+    dir_path="prompt/3_5M-GPT3_5-Augmented_edit-256-1.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1_{datestr()}.txt',
+    save_iter=100000
+    )
+
+MODEL.train_model_prompt(
+    dir_path="prompt/MovieSorted-256-1.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1_{datestr()}.txt',
+    save_iter=100000
     )
