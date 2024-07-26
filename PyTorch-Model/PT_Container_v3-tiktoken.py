@@ -134,21 +134,23 @@ class PT_model_v3:
     def run_model(self,data=None,length=256):
         if data is None:
             context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target)
             return ('GEN:~'+target )
         else:
             context = list( data_clean(data) )
-            if len(context)<256:
-                for i in range( 256-len(context) ): context.append('')
+            # if len(context)<256:
+            #     # for i in range( 256-len(context) ): context.append('')
+            #     context.append('')
             try:
-                context = self.PT_encode(context)
+                context = self.PT_encode2(context)
             except KeyError as e:
                 prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
             
-            context= self.get_batch(context,context)[0]
-            
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
-            # target = target[len(data):]
+            context= self.PT_encode3([context])
+            context = context.to(self.device)
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
@@ -237,7 +239,7 @@ class PT_model_v3:
             #save
             if cnt%save_iter == 0:
                 if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(getDrive()+f'Models/PyTorch_v3-tktk/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -348,7 +350,7 @@ class PT_model_v3:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models/PyTorch_v3-tktk/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -455,7 +457,7 @@ class PT_model_v3:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models/PyTorch_v3-tktk/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")

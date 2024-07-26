@@ -151,21 +151,23 @@ class PT_model_v2:
     def run_model(self,data=None,length=256):
         if data is None:
             context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target)
             return ('GEN:~'+target )
         else:
             context = list( data_clean(data) )
-            if len(context)<256:
-                for i in range( 256-len(context) ): context.append('')
+            # if len(context)<256:
+            #     # for i in range( 256-len(context) ): context.append('')
+            #     context.append('')
             try:
-                context = self.PT_encode(context)
+                context = self.PT_encode2(context)
             except KeyError as e:
                 prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
             
-            context= self.get_batch(context,context)[0]
-            
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
-            # target = target[len(data):]
+            context= self.PT_encode3([context])
+            context = context.to(self.device)
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
@@ -496,6 +498,7 @@ class PT_model_v2:
         else:
             x = torch.stack([data for i in range(self.batch_size)])
             y = torch.stack([targets for i in range(self.batch_size)])
+        prLightPurple(f'x:~{x}\ny:~{y}')
         x, y = x.to(self.device), y.to(self.device)
         return x, y
 
