@@ -21,7 +21,7 @@ changes:
 
 
 
-
+#TODO: do saving onyl every hour not number!!!!!!!!!
 
 #===============================================================================
 class PT_model_v3:
@@ -47,12 +47,19 @@ class PT_model_v3:
         self.dropout =      hyperparameters[11]
         self.hyperparameters = hyperparameters
             
+            
         # meta data ---------------------
-        self.vocab_size = 50258 #gpt2 vocab size(+1 buffer) 'tiktoken.get_encoding("gpt2").n_vocab'
+        self.vocab_size = tiktoken.get_encoding("gpt2").n_vocab+2 #gpt2 vocab size(+2 buffer,SOS) 'tiktoken.get_encoding("gpt2").n_vocab'
+        # buffer ---------------------
+        # the base dict is 0-50256: buffer 50257, SOS 50258
+        self.buffer = self.vocab_size-2
+        self.SOS = self.vocab_size-1
+        # hypers ---------------------
         prGreen(hyperparameters)
-        
         # name ---------------------
-        self.name = 'PTv3-tktk_'+name
+        if name is None: self.name = 'PTv3-tktk'
+        else: self.name = 'PTv3-tktk_'+name
+            
             
         # Model ---------------------
         if model_path == None:
@@ -124,23 +131,58 @@ class PT_model_v3:
     
     
     # ========================================
-    def run_model(self,length=2000):
-        context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-        return fun_decode(self.m.generate(context, max_new_tokens=length)[0].tolist(),self.itos)
+    def run_model(self,data=None,length=256):
+        if data is None:
+            context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
+            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            return ('GEN:~'+target )
+        else:
+            context = list( data_clean(data) )
+            if len(context)<256:
+                for i in range( 256-len(context) ): context.append('')
+            try:
+                context = self.PT_encode(context)
+            except KeyError as e:
+                prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
+            
+            context= self.get_batch(context,context)[0]
+            
+            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            # target = target[len(data):]
+            return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
+    def PT_encode(self,data):
+        return torch.from_numpy( np.array(tiktoken.get_encoding("gpt2").encode(data), dtype=np.int64) ).type(torch.long)
+    #split up versions of ^^^ for train_model_prompt2
+    def PT_encode2(self,data):
+        return tiktoken.get_encoding("gpt2").encode(data)
+    def PT_encode3(self,data):
+        return torch.from_numpy( np.array(data, dtype=np.int64) ).type(torch.long)
+    
+    def PT_decode(self,data):
+        try:
+            data=data[:data.index(self.buffer)+1]   #cut off
+        except Exception:
+            target_index = None
+        return tiktoken.get_encoding("gpt2").decode(data)
     
     # ==================================================================================================
     #NOTE: train model from the procedding character (finishing)
     #txt or int64 encoded bin array
-    def train_model_basic(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
+    def train_model_basic(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
+        if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
         dirlist=os.listdir(dir_path)
-        sze=len(dirlist)-1
         cnt=start
         
-        if end: dirlist=dirlist[start:end]
-        else: dirlist=dirlist[start:]
+        if end:
+            if end>len(dirlist)-1: raise ValueError("End past size of data")
+            dirlist=dirlist[start:end]
+            sze=end-1
+        else:
+            dirlist=dirlist[start:]
+            sze=len(dirlist)-1
         
         if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
         prGreen(f'logpath: {logpath}')
@@ -152,8 +194,8 @@ class PT_model_v3:
         
         for txtpath in dirlist:
             txt=dir_path+"/"+txtpath
-            prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
-            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
+            prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t{txt}...")
+            logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t{txt}...======================================")
             start_time=time.time()
             
             print( txtpath[-4:] )
@@ -162,27 +204,21 @@ class PT_model_v3:
                 with open(txt, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
                 data = ''.join(data)
                 #cleanup
-                for i in ['™']: data=data.replace(i,"")
-                for i in ['“','”']: data=data.replace(i,'"')
-                for i in ['‘','’']: data=data.replace(i,"'")
-                for i in ['--','---','***','�','—','\t','_','|']: data=data.replace(i," ")
-                data= re.sub(' {2,}',' ',data)
-                
-                train_data_torch = tiktoken.get_encoding("gpt2").encode(data)
-                train_data_torch = torch.from_numpy( np.array(train_data_torch, dtype=np.int64) ).type(torch.long)
+                data = data_clean(data)
+                train_data_torch = self.PT_encode(data)
             elif txtpath[-4:] == '.bin':
                 # print(".bin file")
                 train_data_torch = torch.from_numpy( np.fromfile(txt, dtype=np.int64) ).type(torch.long)
             else: raise TypeError(f"non 'txt' or 'bin' file for 'train_model_prompt' not supported")
             
             #actual training
-            for iter in range(self.max_iters):
+            for iter in range(max_iters):
                 # every once in a while evaluate the loss on train and val sets
-                if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
+                if iter % self.eval_interval == 0 or iter == max_iters - 1:
                     losses = self.estimate_loss(train_data_torch)
                     nowtime=time.time()
-                    prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/self.max_iters )}%>  step {iter}/{self.max_iters}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                    logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                 # sample a batch of data
                 xb, yb = self.get_batch(train_data_torch)
@@ -199,25 +235,31 @@ class PT_model_v3:
             logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             
             #save
-            if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-            nowtime=time.time()
-            prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-            logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+            if cnt%save_iter == 0:
+                if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models/PyTorch_v3-tktk/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                nowtime=time.time()
+                prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
             cnt+=1
     
     
     # ========================================
     #NOTE: train model from 'Q&A' Prompts
-    #csv
-    def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message=''):
+    #Trains with 'Q' as input and 'A' as target
+    #csv (Q&A each <= 256 chars) - can be > but will skip over and waste time
+    def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
+        if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
         prGreen(f'savepath: {savepath}')
         
         #NOTE: [!!!!] load csv, iterate through it for each training
         print( dir_path[-4:] )
         if dir_path[-4:] == '.csv':
-            sze = csv_size(dir_path) #get size of data (#rows)
+            if end:
+                if end>csv_size(dir_path): raise ValueError("End past size of data")
+                sze=end-1
+            else: sze = csv_size(dir_path)-start #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
             #iterate till start
@@ -234,74 +276,60 @@ class PT_model_v3:
         else: logger(logpath,   f"No hyperparameters given during objects INIT")
         logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
         
-        fail_cnt=0
+        
         #NOTE: [!!!!] iterate through dataset
         while True:
             try:
-                prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...")
-                logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...======================================")
+                if not end is None:
+                    if cnt >= end: break
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
                 start_time=time.time()                    
                 
                 df = next(df_iter)
                 
-                # question = list( list(df.question)[0] ) #annoying conversion from array of strings to an array of chars
-                # response = list( list(df.response)[0] )
-                question = str( list(df.question)[0] )#annoying conversion from array of strings to an array of chars
-                response = str( list(df.response)[0] )
+                #annoying conversion from array of strings to an array of chars
+                try:
+                    question = list( list(df.question)[0] )
+                    response = list( list(df.response)[0] )
+                except Exception:
+                    question = list( str(list(df.question)[0]) )
+                    response = list( str(list(df.response)[0]) )
+                question = list( data_clean(''.join(question)) )
+                response = list( data_clean(''.join(response)) )
                 
-                #cleanup
-                temp=''
-                for wrd in question:
-                    for i in ['™']: wrd=wrd.replace(i,"")
-                    for i in ['“','”']: wrd=wrd.replace(i,'"')
-                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
-                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
-                    wrd= re.sub(' {2,}',' ',wrd)
-                    if wrd=='' or len(wrd)<1: continue
-                    for chr in wrd: temp+=chr
-                question=temp
-                temp=''
-                for wrd in response:
-                    for i in ['™']: wrd=wrd.replace(i,"")
-                    for i in ['“','”']: wrd=wrd.replace(i,'"')
-                    for i in ['‘','’']: wrd=wrd.replace(i,"'")
-                    for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
-                    wrd= re.sub(' {2,}',' ',wrd)
-                    if wrd=='' or len(wrd)<1: continue
-                    for chr in wrd: temp+=chr
-                response=temp
-                del temp
+                if len(question) > self.block_size or len(response) > self.block_size:
+                    prRed( f"Skipped {cnt}:\tq{len(question)}, r{len(response)}>{self.block_size}" )
+                    logger(logpath, f"Skipped {cnt}:\tq{len(question)}, r{len(response)}>{self.block_size}")
+                    cnt+=1
+                    continue
                 
-                train_torch_prompt = tiktoken.get_encoding("gpt2").encode(question)
-                train_torch_target = tiktoken.get_encoding("gpt2").encode(response)
-                del response,question
-                
-                if len(train_torch_prompt)>len(train_torch_target):
-                    for i in range( len(train_torch_prompt)-len(train_torch_target) ): train_torch_target.append(50257)
-                elif len(train_torch_prompt)<len(train_torch_target):
-                    for i in range( len(train_torch_target)-len(train_torch_prompt) ): train_torch_prompt.append(50257)
+                if len(question)<self.block_size:
+                    for i in range( self.block_size-len(question) ): question.append('')
+                if len(response)<self.block_size:
+                    for i in range( self.block_size-len(response) ): response.append('')
                 
                 try:
-                    #NOTE: ERROR HERE: IS LIST NOT STRINGBUT NEED BUFFER CHARACTER
-                    train_torch_prompt = torch.from_numpy( np.array(train_torch_prompt, dtype=np.int64) ).type(torch.long)
-                    train_torch_target = torch.from_numpy( np.array(train_torch_target, dtype=np.int64) ).type(torch.long)
-                except Exception as e:
-                    fail_cnt+=1
-                    print(f'char couldnt go in stoi: {fail_cnt}'+str(e))
-                    # print(e)
-                    logger(logpath, f'char couldnt go in stoi: {fail_cnt}'+str(e))
+                    train_torch_prompt = self.PT_encode(question)
+                    train_torch_target = self.PT_encode(response)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
                     continue
+                del response,question
+                
                 
                 #----------------------------------
                 
                 #actual training
-                for iter in range(self.max_iters):
+                for iter in range(max_iters):
                     # every once in a while evaluate the loss on train and val sets
-                    if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
+                    if iter % self.eval_interval == 0 or iter == max_iters - 1:
                         losses = self.estimate_loss(train_torch_prompt,train_torch_target)
                         nowtime=time.time()
-                        prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/self.max_iters )}%>  step {iter}/{self.max_iters}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                        logger(logpath,   f"step {iter}:{' '*(2+len(str(self.max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                     # sample a batch of data
                     xb, yb = self.get_batch(train_torch_prompt,train_torch_target)
@@ -318,44 +346,141 @@ class PT_model_v3:
                 logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 
                 #save
-                if cnt%1000 == 0:
+                if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                nowtime=time.time()
-                prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v3-tktk/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    nowtime=time.time()
+                    prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 cnt+=1
             except StopIteration:
                 break
-            
+    
+    
+    # ========================================
+    #NOTE: train model from 'Q&A' Prompts
+    #Trains based off a single string with a token specifying split between 'Q' and 'A'
+    #csv
+    def train_model_prompt2(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
+        if max_iters is None: max_iters = self.max_iters
+        prGreen(f'train_dir: {dir_path}')
+        prGreen(f'savepath: {savepath}')
+        
+        #NOTE: [!!!!] load csv, iterate through it for each training
+        print( dir_path[-4:] )
+        if dir_path[-4:] == '.csv':
+            if end:
+                if end>csv_size(dir_path): raise ValueError("End past size of data")
+                sze=end-1
+            else: sze = csv_size(dir_path)-start #get size of data (#rows)
+            cnt=0
+            df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
+            #iterate till start
+            while cnt != start: df = next(df_iter); cnt+=1
+        else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
+        prGreen("CSV LOAD SUCCESS")
+        
+        #NOTE: [!!!!] setting uplog info
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        prGreen(f'logpath: {logpath}')
+        script_time=time.time()
+        file_helper( logpath )#if log doesnt exist make it
+        if self.hyperparameters: logger(logpath,   f"{self.hyperparameters}")
+        else: logger(logpath,   f"No hyperparameters given during objects INIT")
+        logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
+        
+        
+        #NOTE: [!!!!] iterate through dataset
+        while True:
+            try:
+                if not end is None:
+                    if cnt >= end: break
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
+                start_time=time.time()
+                
+                df = next(df_iter)
+                
+                #annoying conversion from array of strings to an array of chars
+                try:
+                    question = list( list(df.question)[0] )
+                    response = list( list(df.response)[0] )
+                except Exception:
+                    question = list( str(list(df.question)[0]) )
+                    response = list( str(list(df.response)[0]) )
+                question = list( data_clean(''.join(question)) )
+                response = list( data_clean(''.join(response)) )
+                
+                
+                try:
+                    train_torch_input = self.PT_encode2(question)
+                    train_torch_input.append(self.SOS)
+                    train_torch_input.extend( self.PT_encode2(response) )
+                    #if under 256, cant batch
+                    if len(train_torch_input)<self.block_size:
+                        for i in range( self.block_size-len(train_torch_input) ): train_torch_input.append(self.buffer)
+                    train_torch_input = self.PT_encode3(train_torch_input)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
+                    continue
+                del response,question
+                
+                #----------------------------------
+                
+                #actual training
+                for iter in range(max_iters):
+                    # every once in a while evaluate the loss on train and val sets
+                    if iter % self.eval_interval == 0 or iter == max_iters - 1:
+                        losses = self.estimate_loss(train_torch_input)
+                        nowtime=time.time()
+                        prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+
+                    # sample a batch of data
+                    xb, yb = self.get_batch(train_torch_input)
+
+                    # evaluate the loss
+                    logits, self.loss = self.model(xb, yb)
+                    self.optimizer.zero_grad(set_to_none=True)
+                    self.loss.backward()
+                    self.optimizer.step()
+                    if losses <= self.goal: break
+                #post
+                nowtime=time.time()
+                prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                
+                #save
+                if cnt%save_iter == 0:
+                    if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v3-tktk/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    nowtime=time.time()
+                    prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                cnt+=1
+            except StopIteration:
+                break
+    
+    
     #====================================================================================================================
     #add target arg if training for prompts
     def get_batch(self,data, targets=None):
-        try:
-            # generate a small batch of data of inputs x and targets y
-            if targets is None: 
-                ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
-                x = torch.stack([data[i:i+self.block_size] for i in ix])
-                y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
-            elif self.block_size<PROMPTLIMIT:
-                ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
-                iy = torch.randint(len(data) - self.block_size, (self.batch_size,))
-                x = torch.stack([data[i:i+self.block_size] for i in ix])
-                y = torch.stack([data[i:i+self.block_size] for i in iy])
-            else:
-                x = torch.stack([data for i in range(self.batch_size)])
-                y = torch.stack([targets for i in range(self.batch_size)])
-            x, y = x.to(self.device), y.to(self.device)
-            return x, y
-        except Exception as e:
-            print("\n\n============================\nDATA======");print(data[:10])
-            if targets is None: 
-                print("\n\n============================\nix======");print(ix[:10])
-                print("\n\n============================\npre-x======")
-                t=[data[i:i+self.block_size] for i in ix]
-                for i in t: print(i.dtype,i)
-            else: print("\n\n============================\nTARGETS======");print(targets[:10])
-            print(e)
+        # generate a small batch of data of inputs x and targets y
+        if targets is None:
+            if len(data) - self.block_size >0:ix = torch.randint( len(data) - self.block_size, (self.batch_size,))
+            elif len(data) - self.block_size ==0:
+                ix = [0]*self.batch_size
+                data = torch.cat((data,torch.tensor([self.buffer])))
+            else: raise ValueError("!!!![ERROR] get_batch(), target=None: len(data)<self.block_size")
+            x = torch.stack([data[i:i+self.block_size] for i in ix])
+            y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
+        else:
+            x = torch.stack([data for i in range(self.batch_size)])
+            y = torch.stack([targets for i in range(self.batch_size)])
+        x, y = x.to(self.device), y.to(self.device)
+        return x, y
 
     
     #add target arg if training for prompts
@@ -370,7 +495,7 @@ class PT_model_v3:
         out = losses.mean()
         self.model.train()
         return out
-            
+
 #==========================================================
 class Head(nn.Module):
     """ one head of self-attention """
@@ -497,16 +622,55 @@ class BigramLanguageModel(nn.Module):
         return idx
 
 
-if __name__ == "__main__":
-    # mod = PT_model_v2(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl")
-    # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64")
+if __name__ == "__main__": 
     
-    
-    mod = PT_model_v2(
-        meta_data=getDrive()+"book/gutenburg_BIN/metas/gutenburg_bin-RBT-char_meta_int64.pkl",
-        model_path=r"C:/Users/jump3\Desktop/TextGen-ML-SHREC-SURG24/PyTorch-Model/Models/PTv1__CRC__2024-07-08_2_41__765.pt"
+    mod = PT_model_v3(
+        name='_CRC-v3test'
     )
+    prCyan(f'vocab: {mod.vocab_size}')
+    prCyan(f'buffr: {mod.buffer}')
+    prCyan(f'SOStk: {mod.SOS}')
     
-    # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64",logpath=getDrive()+f'Model_Log\PyTorch\PTv1_Threads/PTv1_batchTrain_TEST.txt',end=1)
-
+    prRed("\nBasic")
+    mod.train_model_basic(
+        dir_path=getDrive()+"book/gutenburg",
+        logpath=getDrive()+f'v3testing1.txt',
+        max_iters=1,
+        end=5000
+        )
+    
+    prRed("\nPrompv1: 1")
+    mod.train_model_prompt(
+        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
+        logpath=getDrive()+f'v3testing2.txt',
+        max_iters=1,
+        end=5000
+        )
+    
+    prRed("\nPrompv2: 1")
+    mod.train_model_prompt2(
+        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
+        logpath=getDrive()+f'v3testing3.txt',
+        max_iters=1,
+        end=5000
+        )
+    
+    prRed("\nPrompv1: 2")
+    mod.train_model_prompt(
+        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
+        logpath=getDrive()+f'v3testing4.txt',
+        max_iters=1,
+        end=5000
+        )
+    
+    prRed("\nPrompv2: 2")
+    mod.train_model_prompt2(
+        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
+        logpath=getDrive()+f'v3testing5.txt',
+        max_iters=1,
+        end=5000
+        )
+    
     print( mod.run_model() )
+    print( mod.run_model('hi') )
+    print( mod.run_model('how are you') )

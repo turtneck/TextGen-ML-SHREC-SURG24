@@ -157,11 +157,16 @@ class PT_model_v2:
             context = list( data_clean(data) )
             if len(context)<256:
                 for i in range( 256-len(context) ): context.append('')
-            context = self.PT_encode(context)
+            try:
+                context = self.PT_encode(context)
+            except KeyError as e:
+                prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
+            
             context= self.get_batch(context,context)[0]
             
             target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
             # target = target[len(data):]
+            return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
         return torch.from_numpy( np.array(fun_encode(data, self.stoi), dtype=np.int64) ).type(torch.long)
@@ -249,7 +254,7 @@ class PT_model_v2:
             #save
             if cnt%save_iter == 0:
                 if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -271,7 +276,7 @@ class PT_model_v2:
             if end:
                 if end>csv_size(dir_path): raise ValueError("End past size of data")
                 sze=end-1
-            else: sze = csv_size(dir_path) #get size of data (#rows)
+            else: sze = csv_size(dir_path)-start #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
             #iterate till start
@@ -300,14 +305,20 @@ class PT_model_v2:
                 
                 df = next(df_iter)
                 
-                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
-                response = list( list(df.response)[0] )
+                #annoying conversion from array of strings to an array of chars
+                try:
+                    question = list( list(df.question)[0] )
+                    response = list( list(df.response)[0] )
+                except Exception:
+                    question = list( str(list(df.question)[0]) )
+                    response = list( str(list(df.response)[0]) )
                 question = list( data_clean(''.join(question)) )
                 response = list( data_clean(''.join(response)) )
                 
                 if len(question) > self.block_size or len(response) > self.block_size:
                     prRed( f"Skipped {cnt}:\tq{len(question)}, r{len(response)}>{self.block_size}" )
                     logger(logpath, f"Skipped {cnt}:\tq{len(question)}, r{len(response)}>{self.block_size}")
+                    cnt+=1
                     continue
                 
                 if len(question)<self.block_size:
@@ -315,9 +326,14 @@ class PT_model_v2:
                 if len(response)<self.block_size:
                     for i in range( self.block_size-len(response) ): response.append('')
                 
-                # print('xy size',len(response),len(question))
-                train_torch_prompt = self.PT_encode(question)
-                train_torch_target = self.PT_encode(response)
+                try:
+                    train_torch_prompt = self.PT_encode(question)
+                    train_torch_target = self.PT_encode(response)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
+                    continue
                 del response,question
                 
                 
@@ -349,7 +365,7 @@ class PT_model_v2:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -373,7 +389,7 @@ class PT_model_v2:
             if end:
                 if end>csv_size(dir_path): raise ValueError("End past size of data")
                 sze=end-1
-            else: sze = csv_size(dir_path) #get size of data (#rows)
+            else: sze = csv_size(dir_path)-start #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
             #iterate till start
@@ -402,18 +418,30 @@ class PT_model_v2:
                 
                 df = next(df_iter)
                 
-                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
-                response = list( list(df.response)[0] )
+                #annoying conversion from array of strings to an array of chars
+                try:
+                    question = list( list(df.question)[0] )
+                    response = list( list(df.response)[0] )
+                except Exception:
+                    question = list( str(list(df.question)[0]) )
+                    response = list( str(list(df.response)[0]) )
                 question = list( data_clean(''.join(question)) )
                 response = list( data_clean(''.join(response)) )
-                              
-                train_torch_input = self.PT_encode2(question)
-                train_torch_input.append(self.SOS)
-                train_torch_input.extend( self.PT_encode2(response) )
-                #if under 256, cant batch
-                if len(train_torch_input)<self.block_size:
-                    for i in range( self.block_size-len(train_torch_input) ): train_torch_input.append(self.buffer)
-                train_torch_input = self.PT_encode3(train_torch_input)
+                
+                
+                try:
+                    train_torch_input = self.PT_encode2(question)
+                    train_torch_input.append(self.SOS)
+                    train_torch_input.extend( self.PT_encode2(response) )
+                    #if under 256, cant batch
+                    if len(train_torch_input)<self.block_size:
+                        for i in range( self.block_size-len(train_torch_input) ): train_torch_input.append(self.buffer)
+                    train_torch_input = self.PT_encode3(train_torch_input)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
+                    continue
                 del response,question
                 
                 #----------------------------------
@@ -444,7 +472,7 @@ class PT_model_v2:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -458,8 +486,6 @@ class PT_model_v2:
     def get_batch(self,data, targets=None):
         # generate a small batch of data of inputs x and targets y
         if targets is None:
-            # prCyan(f'{len(data)}')
-            # prCyan(f'{data}')
             if len(data) - self.block_size >0:ix = torch.randint( len(data) - self.block_size, (self.batch_size,))
             elif len(data) - self.block_size ==0:
                 ix = [0]*self.batch_size
@@ -471,9 +497,6 @@ class PT_model_v2:
             x = torch.stack([data for i in range(self.batch_size)])
             y = torch.stack([targets for i in range(self.batch_size)])
         x, y = x.to(self.device), y.to(self.device)
-        # prLightPurple(f'x:~{x}\ny:~{y}')
-        # prPurple(f'2x:~{len(x)}, y:~{len(y)}')
-        # prPurple(f'3x:~{len(x[0])}, y:~{len(y[0])}')
         return x, y
 
     
@@ -617,7 +640,7 @@ class BigramLanguageModel(nn.Module):
 
 
 if __name__ == "__main__":
-    # mod = PT_model_v2(getDrive()+"book/gutenburg_BIN\metas\gutenburg_bin-RBT-char_meta_int64.pkl")
+    # mod = PT_model_v2(getDrive()+"book/gutenburg_BIN\metas/gutenburg_bin-RBT-char_meta_int64.pkl")
     # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64")
     
     
@@ -629,49 +652,104 @@ if __name__ == "__main__":
     prCyan(f'buffr: {mod.buffer}')
     prCyan(f'SOStk: {mod.SOS}')
     
+    print( mod.run_model() )
+    print( mod.run_model('hi') )
+    print( mod.run_model('how are you') )
+    
     # prRed("\nBasic")
     # mod.train_model_basic(
     #     dir_path=getDrive()+"book/gutenburg",
-    #     logpath=getDrive()+f'v2testing.txt',
-    #     end=10,
-    #     max_iters=1
+    #     logpath=getDrive()+f'v2testing1-SL.txt',
+    #     max_iters=1,
+    #     end=10
     #     )
     
     # prRed("\nPrompv1: 1")
     # mod.train_model_prompt(
     #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-    #     logpath=getDrive()+f'v2testing.txt',
-    #     end=10,
+    #     logpath=getDrive()+f'v2testing2.txt',
+    #     start=2136,
     #     max_iters=1
     #     )
     
-    prRed("\nPrompv2: 1")
-    mod.train_model_prompt2(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-        logpath=getDrive()+f'v2testing.txt',
-        start=2,
-        end=10,
-        max_iters=1
-        )
+    # prRed("\nPrompv2: 1")
+    # mod.train_model_prompt2(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
+    #     logpath=getDrive()+f'v2testing3.txt',
+    #     max_iters=1,
+    #     start=87
+    #     )
     
-    prRed("\nPrompv1: 2")
-    mod.train_model_prompt(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-        logpath=getDrive()+f'v2testing.txt',
-        end=10,
-        max_iters=1
-        )
+    # prRed("\nPrompv1: 2")
+    # mod.train_model_prompt(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
+    #     logpath=getDrive()+f'v2testing4.txt',
+    #     max_iters=1,
+    #     start=2053
+    #     )
     
-    prRed("\nPrompv2: 2")
-    mod.train_model_prompt2(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-        logpath=getDrive()+f'v2testing.txt',
-        end=10,
-        max_iters=1
-        )
+    # prRed("\nPrompv2: 2")
+    # mod.train_model_prompt2(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
+    #     logpath=getDrive()+f'v2testing5.txt',
+    #     max_iters=1,
+    #     start=180
+    #     )
     
-    # print( mod.stoi )
-    # print( mod.vocab_size )
-    print( mod.run_model() )
-    print( mod.run_model('hi') )
-    print( mod.run_model('how are you') )
+    # print( mod.run_model() )
+    # print( mod.run_model('hi') )
+    # print( mod.run_model('how are you') )
+    
+    # mod.save_model(getDrive()+'v2_save-test1.pt')
+    
+    # #-----------
+    # del mod
+    # mod2 = PT_model_v2(
+    #     meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+    #     model_path=getDrive()+'v2_save-test1.pt'
+    # )
+    
+    # prRed("\ntime2: Basic")
+    # mod2.train_model_basic(
+    #     dir_path=getDrive()+"book/gutenburg",
+    #     logpath=getDrive()+f'v2testing1-SL.txt',
+    #     max_iters=1,
+    #     end=10
+    #     )
+    
+    # prRed("\ntime2: Prompv1: 1")
+    # mod2.train_model_prompt(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
+    #     logpath=getDrive()+f'v2testing2-SL.txt',
+    #     max_iters=1,
+    #     end=10
+    #     )
+    
+    # prRed("\ntime2: Prompv2: 1")
+    # mod2.train_model_prompt2(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
+    #     logpath=getDrive()+f'v2testing3-SL.txt',
+    #     max_iters=1,
+    #     end=10
+    #     )
+    
+    # print( mod2.run_model() )
+    # print( mod2.run_model('hi') )
+    # print( mod2.run_model('how are you') )
+    
+    
+    #--------------------------
+    
+    
+    # mod = PT_model_v2(
+    #     meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+    #     model_path=dir_path+'/PyTorch-Model/Models/PTv2__2024-07-25_23_56__75000.pt'
+    # )
+    # prCyan(f'vocab: {mod.vocab_size}')
+    # prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
+    # prCyan(f'buffr: {mod.buffer}')
+    # prCyan(f'SOStk: {mod.SOS}')
+    
+    # print( mod.run_model() )
+    # print( mod.run_model('hi') )
+    # print( mod.run_model('how are you') )

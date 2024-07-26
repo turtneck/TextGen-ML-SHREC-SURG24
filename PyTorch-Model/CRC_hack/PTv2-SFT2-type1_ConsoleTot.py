@@ -272,11 +272,16 @@ class PT_model_v2:
             context = list( data_clean(data) )
             if len(context)<256:
                 for i in range( 256-len(context) ): context.append('')
-            context = self.PT_encode(context)
+            try:
+                context = self.PT_encode(context)
+            except KeyError as e:
+                prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
+            
             context= self.get_batch(context,context)[0]
             
             target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
             # target = target[len(data):]
+            return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
         return torch.from_numpy( np.array(fun_encode(data, self.stoi), dtype=np.int64) ).type(torch.long)
@@ -306,7 +311,7 @@ class PT_model_v2:
         if end:
             if end>len(dirlist)-1: raise ValueError("End past size of data")
             dirlist=dirlist[start:end]
-            sze=end
+            sze=end-1
         else:
             dirlist=dirlist[start:]
             sze=len(dirlist)-1
@@ -321,8 +326,8 @@ class PT_model_v2:
         
         for txtpath in dirlist:
             txt=dir_path+"/"+txtpath
-            prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
-            logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...======================================")
+            prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t{txt}...")
+            logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t{txt}...======================================")
             start_time=time.time()
             
             print( txtpath[-4:] )
@@ -344,7 +349,7 @@ class PT_model_v2:
                 if iter % self.eval_interval == 0 or iter == max_iters - 1:
                     losses = self.estimate_loss(train_data_torch)
                     nowtime=time.time()
-                    prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                 # sample a batch of data
@@ -364,7 +369,7 @@ class PT_model_v2:
             #save
             if cnt%save_iter == 0:
                 if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -385,8 +390,8 @@ class PT_model_v2:
         if dir_path[-4:] == '.csv':
             if end:
                 if end>csv_size(dir_path): raise ValueError("End past size of data")
-                sze=end
-            else: sze = csv_size(dir_path) #get size of data (#rows)
+                sze=end-1
+            else: sze = csv_size(dir_path)-start #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
             #iterate till start
@@ -409,20 +414,26 @@ class PT_model_v2:
             try:
                 if not end is None:
                     if cnt >= end: break
-                prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...")
-                logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...======================================")
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
                 start_time=time.time()                    
                 
                 df = next(df_iter)
                 
-                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
-                response = list( list(df.response)[0] )
+                #annoying conversion from array of strings to an array of chars
+                try:
+                    question = list( list(df.question)[0] )
+                    response = list( list(df.response)[0] )
+                except Exception:
+                    question = list( str(list(df.question)[0]) )
+                    response = list( str(list(df.response)[0]) )
                 question = list( data_clean(''.join(question)) )
                 response = list( data_clean(''.join(response)) )
                 
                 if len(question) > self.block_size or len(response) > self.block_size:
                     prRed( f"Skipped {cnt}:\tq{len(question)}, r{len(response)}>{self.block_size}" )
                     logger(logpath, f"Skipped {cnt}:\tq{len(question)}, r{len(response)}>{self.block_size}")
+                    cnt+=1
                     continue
                 
                 if len(question)<self.block_size:
@@ -430,9 +441,14 @@ class PT_model_v2:
                 if len(response)<self.block_size:
                     for i in range( self.block_size-len(response) ): response.append('')
                 
-                # print('xy size',len(response),len(question))
-                train_torch_prompt = self.PT_encode(question)
-                train_torch_target = self.PT_encode(response)
+                try:
+                    train_torch_prompt = self.PT_encode(question)
+                    train_torch_target = self.PT_encode(response)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
+                    continue
                 del response,question
                 
                 
@@ -444,7 +460,7 @@ class PT_model_v2:
                     if iter % self.eval_interval == 0 or iter == max_iters - 1:
                         losses = self.estimate_loss(train_torch_prompt,train_torch_target)
                         nowtime=time.time()
-                        prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                         logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                     # sample a batch of data
@@ -464,7 +480,7 @@ class PT_model_v2:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -487,8 +503,8 @@ class PT_model_v2:
         if dir_path[-4:] == '.csv':
             if end:
                 if end>csv_size(dir_path): raise ValueError("End past size of data")
-                sze=end
-            else: sze = csv_size(dir_path) #get size of data (#rows)
+                sze=end-1
+            else: sze = csv_size(dir_path)-start #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
             #iterate till start
@@ -511,24 +527,36 @@ class PT_model_v2:
             try:
                 if not end is None:
                     if cnt >= end: break
-                prCyan(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...")
-                logger(logpath,   add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>...======================================")
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
                 start_time=time.time()
                 
                 df = next(df_iter)
                 
-                question = list( list(df.question)[0] ) #aanoying conversion from array of strings to an array of chars
-                response = list( list(df.response)[0] )
+                #annoying conversion from array of strings to an array of chars
+                try:
+                    question = list( list(df.question)[0] )
+                    response = list( list(df.response)[0] )
+                except Exception:
+                    question = list( str(list(df.question)[0]) )
+                    response = list( str(list(df.response)[0]) )
                 question = list( data_clean(''.join(question)) )
                 response = list( data_clean(''.join(response)) )
-                              
-                train_torch_input = self.PT_encode2(question)
-                train_torch_input.append(self.SOS)
-                train_torch_input.extend( self.PT_encode2(response) )
-                #if under 256, cant batch
-                if len(train_torch_input)<self.block_size:
-                    for i in range( self.block_size-len(train_torch_input) ): train_torch_input.append(self.buffer)
-                train_torch_input = self.PT_encode3(train_torch_input)
+                
+                
+                try:
+                    train_torch_input = self.PT_encode2(question)
+                    train_torch_input.append(self.SOS)
+                    train_torch_input.extend( self.PT_encode2(response) )
+                    #if under 256, cant batch
+                    if len(train_torch_input)<self.block_size:
+                        for i in range( self.block_size-len(train_torch_input) ): train_torch_input.append(self.buffer)
+                    train_torch_input = self.PT_encode3(train_torch_input)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
+                    continue
                 del response,question
                 
                 #----------------------------------
@@ -539,7 +567,7 @@ class PT_model_v2:
                     if iter % self.eval_interval == 0 or iter == max_iters - 1:
                         losses = self.estimate_loss(train_torch_input)
                         nowtime=time.time()
-                        prYellow(add_message+f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                         logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
 
                     # sample a batch of data
@@ -559,7 +587,7 @@ class PT_model_v2:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models\PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -573,7 +601,11 @@ class PT_model_v2:
     def get_batch(self,data, targets=None):
         # generate a small batch of data of inputs x and targets y
         if targets is None:
-            ix = torch.randint( abs(len(data) - self.block_size), (self.batch_size,))
+            if len(data) - self.block_size >0:ix = torch.randint( len(data) - self.block_size, (self.batch_size,))
+            elif len(data) - self.block_size ==0:
+                ix = [0]*self.batch_size
+                data = torch.cat((data,torch.tensor([self.buffer])))
+            else: raise ValueError("!!!![ERROR] get_batch(), target=None: len(data)<self.block_size")
             x = torch.stack([data[i:i+self.block_size] for i in ix])
             y = torch.stack([data[i+1:i+self.block_size+1] for i in ix])
         else:
