@@ -656,8 +656,8 @@ if __name__ == "__main__":
     
     
     mod = PT_model_v2(
-        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=getDrive()+'Models/PyTorch_v2/PTv2__2024-07-26_1_25__119000.pt'
+        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl"#,
+        # model_path=getDrive()+'Models/PyTorch_v2/PTv2__2024-07-26_1_25__119000.pt'
     )
     prCyan(f'vocab: {mod.vocab_size}')
     prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
@@ -667,6 +667,7 @@ if __name__ == "__main__":
     print( mod.run_model() )
     # print( mod.run_model('hi') )
     print( mod.run_model('how are you') )
+    print( mod.run_model('how are you.') )
     print( mod.run_model('Q:how are you A:') )
     
     # prRed("\ntime2: Basic")

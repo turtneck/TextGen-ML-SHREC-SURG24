@@ -31,7 +31,7 @@ def printLines(file, n=10):
     for line in lines[:n]:
         print(line)
 
-printLines(dir_path+"/utterances.jsonl")
+# printLines(dir_path+"/PyTorch-Model/testing/utterances.jsonl")
 #======================================================================
 #======================================================================
 #======================================================================
@@ -79,25 +79,25 @@ def extractSentencePairs(conversations):
 #--------------
 #--------------
 #--------------
-datafile = "formatted_movie_lines.txt"
+datafile = dir_path+"/PyTorch-Model/testing/formatted_movie_lines.txt"
 
-delimiter = '\t'
-# Unescape the delimiter
-delimiter = str(codecs.decode(delimiter, "unicode_escape"))
+# delimiter = '\t'
+# # Unescape the delimiter
+# delimiter = str(codecs.decode(delimiter, "unicode_escape"))
 
-# Initialize lines dict and conversations dict
-lines = {}
-conversations = {}
-# Load lines and conversations
-print("\nProcessing corpus into lines and conversations...")
-lines, conversations = loadLinesAndConversations(dir_path+"/utterances.jsonl")
+# # Initialize lines dict and conversations dict
+# lines = {}
+# conversations = {}
+# # Load lines and conversations
+# print("\nProcessing corpus into lines and conversations...")
+# lines, conversations = loadLinesAndConversations(dir_path+"/PyTorch-Model/testing/utterances.jsonl")
 
-# Write new csv file
-print("\nWriting newly formatted file...")
-with open(datafile, 'w', encoding='utf-8') as outputfile:
-    writer = csv.writer(outputfile, delimiter=delimiter, lineterminator='\n')
-    for pair in extractSentencePairs(conversations):
-        writer.writerow(pair)
+# # Write new csv file
+# print("\nWriting newly formatted file...")
+# with open(datafile, 'w', encoding='utf-8') as outputfile:
+#     writer = csv.writer(outputfile, delimiter=delimiter, lineterminator='\n')
+#     for pair in extractSentencePairs(conversations):
+#         writer.writerow(pair)
 
 # Print a sample of lines
 print("\nSample lines from file:")
@@ -490,6 +490,8 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
     # Forward batch of sequences through decoder one time step at a time
+    print(f'E_in:~{input_variable}')
+    print(f'D_in:~{decoder_input}')
     if use_teacher_forcing:
         for t in range(max_target_len):
             decoder_output, decoder_hidden = decoder(
@@ -516,6 +518,9 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
             loss += mask_loss
             print_losses.append(mask_loss.item() * nTotal)
             n_totals += nTotal
+    print(f'\nE_out:~{encoder_outputs}')
+    print(f'D_out:~{decoder_output}')
+    print(f'D_in2:~{decoder_input}')
 
     # Perform backpropagation
     loss.backward()
@@ -562,6 +567,7 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
             print_loss_avg = print_loss / print_every
             print("Iteration: {}; Percent complete: {:.1f}%; Average loss: {:.4f}".format(iteration, iteration / n_iteration * 100, print_loss_avg))
             print_loss = 0
+        print('==========================================\n\n\n')
 
         # Save checkpoint
         if (iteration % save_every == 0):
