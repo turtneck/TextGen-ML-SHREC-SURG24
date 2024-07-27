@@ -1,3 +1,7 @@
+#Original example:https://github.com/karpathy/nanoGPT
+#Decoder(w/ Attn Layer) Transformer
+#Generates text that continues along its given input
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
