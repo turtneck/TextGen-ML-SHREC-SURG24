@@ -55,26 +55,12 @@ try:
         #load whole data set into RAM (one big string) and format it down to words
         start_time=time.time()
         with open(getDrive()+"book\\gutenburg"+"\\"+txtpath, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
-        
-        #tokenize
-        res,ind = np.unique(data, return_index=True)
-        data = res[np.argsort(ind)]
-        del res;del ind
-        
+        data = ''.join(data)
+        data=data_clean(data)
         word_cnt = dict.size
-        #cleanup
-        for wrd in data:
-            for i in ['™']: wrd=wrd.replace(i,"")
-            for i in ['“','”']: wrd=wrd.replace(i,'"')
-            for i in ['‘','’']: wrd=wrd.replace(i,"'")
-            for i in ['--','---','***','�','—','\t','_','|']: wrd=wrd.replace(i," ")
-            wrd= re.sub(' {2,}',' ',wrd)
-            #if wrd in ['',' ',' \n','\n']: continue
-            if wrd=='' or len(wrd)<1: continue
-            for chr in wrd: dict.insert(chr)
+        for chr in data: dict.insert(chr)
         
         word_cnt=dict.size-word_cnt
-        # if cnt%100 ==0: RBTree.save_tree(printpath+'gutenDICT-RBT/char/gutenburg_dict-RBT-chr_t.bin')
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+<{word_cnt}> chars\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
         t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>  {txt}..."
@@ -85,15 +71,11 @@ except Exception as e:
     fail=True
     nowtime=time.time()
     logger(log_name,   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-    prALERT(f"data:\t\t{data}")
     prALERT(f"dict size:\t\t{dict.size}")
-    dict.save_tree(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-chr_FAIL__{dstr}.bin')
     prALERT(e)
     
     
 
 #///////////////////////////////////////////////////////////////
-if not fail:
-    dict.save_tree(printpath+f'gutenDICT-RBT/char/gutenburg_dict-RBT-chr__{dstr}.bin')
-    dict.save_tree(printpath+'gutenDICT-RBT/char/gutenburg_dict-RBT-chr.bin')
-    print( dict.inorder_arr_VAL() )
+if not fail: print("bro passed")
+else: print(f"bro failed:\t{cnt}\t{txt}")
