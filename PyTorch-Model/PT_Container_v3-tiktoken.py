@@ -2,6 +2,10 @@
 #Decoder(w/ Attn Layer) Transformer
 #Generates text that continues along its given input
 
+#NOTE: This version works off Open-AI's subword-dict TikToken, otherwise identical to v2
+
+
+#-------
 import torch
 import torch.nn as nn
 from torch.nn import functional as F

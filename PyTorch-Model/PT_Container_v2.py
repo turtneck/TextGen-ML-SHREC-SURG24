@@ -2,6 +2,18 @@
 #Decoder(w/ Attn Layer) Transformer
 #Generates text that continues along its given input
 
+#NOTE: I just took a System-Engineering class, so I focused on a very versitle container
+# - versitle save/load
+# - dict correctors (for special tokens)
+# - prompt training, response generation
+# - training from entire directory
+# - several overwrites for debugging
+# - several types of trainings (till I found the correct one)
+# - stabilization to original example funcs
+# - default meta values tested to best settings
+
+
+#-------
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
