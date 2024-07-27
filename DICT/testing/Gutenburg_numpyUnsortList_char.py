@@ -38,27 +38,27 @@ fail=False
 start=0
 
 #------------------------
-dirlist=os.listdir(getDrive()+"book\\gutenburg")
+dirlist=os.listdir(getDrive()+"book/gutenburg")
 sze=len(dirlist)-1
 cnt=start
 #open up all files
 try:
     for txtpath in dirlist[start:]:
         last_word="";nospace=False
-        txt=getDrive()+"book\\gutenburg"+"\\"+txtpath
+        txt=getDrive()+"book/gutenburg/"+txtpath
         prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
         
         
         #load whole data set into RAM (one big string) and format it down to words
         start_time=time.time()
-        with open(getDrive()+"book\\gutenburg"+"\\"+txtpath, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
+        with open(getDrive()+"book/gutenburg/"+txtpath, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
         data = ''.join(data)
         data=data_clean(data)
         word_cnt = dict.size
         for chr in data:
-            if dict.__contains__(chr): dict= np.append(dict,chr)
+            if not dict.__contains__(chr): dict= np.append(dict,chr)
         
-        word_cnt=dict.size()-word_cnt
+        word_cnt=dict.size-word_cnt
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+<{word_cnt}> chars\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
         t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>  {txt}..."
@@ -69,7 +69,7 @@ except Exception as e:
     fail=True
     nowtime=time.time()
     logger(log_name,   f"FAILLLLLLL PROG<> {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-    prALERT(f"dict size:\t\t{dict.size()}")
+    prALERT(f"dict size:\t\t{dict.size}")
     prALERT(e)
     
     

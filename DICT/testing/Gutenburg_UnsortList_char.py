@@ -28,7 +28,7 @@ logger(log_name,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 
 #loading past dict---------------------
 #no imports
-dict = []
+dict_obj = []
 
 dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
 fail=False
@@ -38,26 +38,27 @@ fail=False
 start=0
 
 #------------------------
-dirlist=os.listdir(getDrive()+"book\\gutenburg")
+dirlist=os.listdir(getDrive()+"book/gutenburg")
 sze=len(dirlist)-1
 cnt=start
 #open up all files
 try:
     for txtpath in dirlist[start:]:
         last_word="";nospace=False
-        txt=getDrive()+"book\\gutenburg"+"\\"+txtpath
+        txt=getDrive()+"book/gutenburg/"+txtpath
         prCyan(f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>\t{txt}...")
         
         
         #load whole data set into RAM (one big string) and format it down to words
         start_time=time.time()
-        with open(getDrive()+"book\\gutenburg"+"\\"+txtpath, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
+        with open(getDrive()+"book/gutenburg/"+txtpath, 'r', encoding="utf-8") as f: data = f.readlines()[1:-1]
         data = ''.join(data)
         data=data_clean(data)
-        word_cnt = dict.size
-        for chr in data: dict.insert(chr)
+        word_cnt = len(dict_obj)
+        for chr in data:
+            if not chr in dict_obj: dict_obj.append(chr)
         
-        word_cnt=len(dict)-word_cnt
+        word_cnt=len(dict_obj)-word_cnt
         nowtime=time.time()
         prYellow( f"{  goodtime(nowtime-start_time)  }\t+<{word_cnt}> chars\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
         t_str=f"PROG {cnt}/{sze}: <{gdFL( 100*cnt/sze )}%>  {txt}..."
