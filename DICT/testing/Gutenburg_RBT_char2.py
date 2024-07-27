@@ -21,6 +21,7 @@ script_time=time.time()
 print(f"DRIVE_DIR:\t\t<{getDrive()+'book/gutenburg'}>")
 printpath=(getDrive()+"book/dict/")
 log_name=printpath+'gutenburg_log-RBT-chr-TEST.txt'
+print(f"LOG_DIR:\t\t<{log_name}>")
 file_helper( log_name )#if log doesnt exist make it
 logger(log_name,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 
