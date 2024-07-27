@@ -29,26 +29,26 @@ logger(log_name,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 #///////////////////////////////////////////////////////////////
 
 
+from heapq import heapify, heappush, heappop
 
-class SortList():
+class MinHeap():
     def __init__(self):
         self.arr = []
+        heapify(self.arr)
         self.size=0
 
     def insert(self, key):
         if not key in self.arr:
+            heappush(self.arr, key)
             self.size+=1
-            index=0 #least-max list
-            for i in self.arr:
-                if key<i:break
-                index+=1
-            self.arr.insert(index,key)
-        return
+    def print(self):
+        for i in self.arr: 
+	        print(i, end = ' ') 
 
 
 
 #///////////////////////////////////////////////////////////////
-dict = SortList()
+dict = MinHeap()
 
 dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
 fail=False

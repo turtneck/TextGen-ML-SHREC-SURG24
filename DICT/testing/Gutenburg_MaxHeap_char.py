@@ -29,26 +29,27 @@ logger(log_name,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 #///////////////////////////////////////////////////////////////
 
 
+from heapq import _heapify_max, _heappop_max, _siftdown_max
 
-class SortList():
+class MaxHeap():
     def __init__(self):
         self.arr = []
         self.size=0
 
     def insert(self, key):
         if not key in self.arr:
+            self.arr.append(key)
+            _siftdown_max(self.arr, 0, len(self.arr)-1)
             self.size+=1
-            index=0 #least-max list
-            for i in self.arr:
-                if key<i:break
-                index+=1
-            self.arr.insert(index,key)
-        return
+    def print(self):
+        copy=self.arr.copy()
+        while len(copy) != 0: # popping items from max_heap
+            print(_heappop_max(copy)) # ... unless its empty
 
 
 
 #///////////////////////////////////////////////////////////////
-dict = SortList()
+dict = MaxHeap()
 
 dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
 fail=False

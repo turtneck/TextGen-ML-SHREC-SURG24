@@ -11,9 +11,9 @@ This method is RAM heavy, and 100000x faster then the 'minRAM' approach that tri
 import csv,os,sys,time,numpy,datetime,multiprocessing,re
 import numpy as np
 #sys.path.append('D:/projects/base/app/modules') 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+dir_path = os.path.abspath("")
 print(f"DIRECTORY:\t\t<{dir_path}>")
-sys.path.append(dir_path[:-5])
+sys.path.append(dir_path)
 from fun_colors import *
 
 #file path and global variables
@@ -26,11 +26,7 @@ logger(log_name,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
 
 
 #loading past dict---------------------
-sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/Datatypes')
-dict_name=printpath+'gutenburg_dict-SortList-chr-TEST.bin'
-
-print(f"DICT_FILE:\t\t<{ dict_name }>")
-file_helper( dict_name )#if dict doesnt exist make it
+#no imports
 dict = np.array([],dtype="<U3")
 
 dstr=f"{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}"
