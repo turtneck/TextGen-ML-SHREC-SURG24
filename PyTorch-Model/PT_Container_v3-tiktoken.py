@@ -255,6 +255,7 @@ class PT_model_v3:
     #Trains with 'Q' as input and 'A' as target
     #csv (Q&A each <= 256 chars) - can be > but will skip over and waste time
     #DEFUCT!!!!!!!!!!!!!!!!
+    '''
     def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
         if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
@@ -362,7 +363,7 @@ class PT_model_v3:
                 cnt+=1
             except StopIteration:
                 break
-    
+    '''
     
     # ========================================
     #NOTE: train model from 'Q&A' Prompts
@@ -638,21 +639,21 @@ if __name__ == "__main__":
     prCyan(f'buffr: {mod.buffer}')
     prCyan(f'SOStk: {mod.SOS}')
     
-    prRed("\nBasic")
-    mod.train_model_basic(
-        dir_path=getDrive()+"book/gutenburg",
-        logpath=getDrive()+f'v3testing1.txt',
-        max_iters=1,
-        end=1
-        )
+    # prRed("\nBasic")
+    # mod.train_model_basic(
+    #     dir_path=getDrive()+"book/gutenburg",
+    #     logpath=getDrive()+f'v3testing1.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
     
-    prRed("\nPrompv1: 1")
-    mod.train_model_prompt(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-        logpath=getDrive()+f'v3testing2.txt',
-        max_iters=1,
-        end=1
-        )
+    # prRed("\nPrompv1: 1")
+    # mod.train_model_prompt(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
+    #     logpath=getDrive()+f'v3testing2.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
     
     prRed("\nPrompv2: 1")
     mod.train_model_prompt2(
@@ -662,21 +663,21 @@ if __name__ == "__main__":
         end=1
         )
     
-    prRed("\nPrompv1: 2")
-    mod.train_model_prompt(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-        logpath=getDrive()+f'v3testing4.txt',
-        max_iters=1,
-        end=1
-        )
+    # prRed("\nPrompv1: 2")
+    # mod.train_model_prompt(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
+    #     logpath=getDrive()+f'v3testing4.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
     
-    prRed("\nPrompv2: 2")
-    mod.train_model_prompt2(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-        logpath=getDrive()+f'v3testing5.txt',
-        max_iters=1,
-        end=1
-        )
+    # prRed("\nPrompv2: 2")
+    # mod.train_model_prompt2(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
+    #     logpath=getDrive()+f'v3testing5.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
     
     print( mod.run_model() )
     print( mod.run_model('hi') )
