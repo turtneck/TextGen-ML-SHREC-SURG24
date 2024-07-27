@@ -263,24 +263,25 @@ class PT_model_v2:
     
     
     # ========================================
-    def run_model(self,data=None,length=256):
+    def run_model(self,data=None,length=256,verbose=False):
         if data is None:
             context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target,verbose)
             return ('GEN:~'+target )
         else:
-            context = list( data_clean(data) )
-            if len(context)<256:
-                for i in range( 256-len(context) ): context.append('')
+            data_yay = list( data_clean(data) )
             try:
-                context = self.PT_encode(context)
+                context = self.PT_encode2(data_yay)
+                context.append(self.SOS)
             except KeyError as e:
                 prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
+                return
             
-            context= self.get_batch(context,context)[0]
-            
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
-            # target = target[len(data):]
+            context= self.PT_encode3([context])
+            context = context.to(self.device)
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target,verbose)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
@@ -291,11 +292,18 @@ class PT_model_v2:
     def PT_encode3(self,data):
         return torch.from_numpy( np.array(data, dtype=np.int64) ).type(torch.long)
     
-    def PT_decode(self,data):
+    def PT_decode(self,data,verbose=False):
+        try:
+            data=data[data.index(self.SOS)+1:]   #cut off
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
         try:
             data=data[:data.index(self.buffer)+1]   #cut off
-        except Exception:
-            target_index = None
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
+            
         return fun_decode(data,self.itos)
     
     # ==================================================================================================
@@ -380,6 +388,7 @@ class PT_model_v2:
     #NOTE: train model from 'Q&A' Prompts
     #Trains with 'Q' as input and 'A' as target
     #csv (Q&A each <= 256 chars) - can be > but will skip over and waste time
+    #DEFUCT!!!!!!!!!!!!!!!!
     def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
         if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
@@ -611,6 +620,7 @@ class PT_model_v2:
         else:
             x = torch.stack([data for i in range(self.batch_size)])
             y = torch.stack([targets for i in range(self.batch_size)])
+        #prLightPurple(f'x:~{x}\ny:~{y}')
         x, y = x.to(self.device), y.to(self.device)
         return x, y
 
@@ -635,11 +645,12 @@ print("tot ML class pass")
 #==========================================================
 VERSION = '2'
 dir_path = os.path.abspath("")
-modelname=''
+modelname=''    #replace when ready
 
-MODEL = PT_model_v2(meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path=dir_path+'/Models/'+modelname,
-        name='_CRC-SFT2-type1')
+MODEL = PT_model_v2(
+            meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+            model_path=dir_path+'/Models/'+modelname,
+            name='_CRC-SFT2-type1')
 print("Model create pass")
                     
 #------------------------
@@ -651,20 +662,20 @@ prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 MODEL.train_model_prompt(
     dir_path="prompt/1M-GPT4-Augmented_edit-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
-    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1_{datestr()}.txt',
-    save_iter=10000
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
+    save_iter=1000
     )
 
 MODEL.train_model_prompt(
     dir_path="prompt/3_5M-GPT3_5-Augmented_edit-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
-    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1_{datestr()}.txt',
-    save_iter=100000
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
+    save_iter=10000
     )
 
 MODEL.train_model_prompt(
     dir_path="prompt/MovieSorted-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
-    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1_{datestr()}.txt',
-    save_iter=100000
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
+    save_iter=10000
     )

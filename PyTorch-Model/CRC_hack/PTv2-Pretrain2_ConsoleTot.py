@@ -6,7 +6,6 @@ import pandas as pd
 import csv,os,sys,time,datetime,multiprocessing,re
 import numpy as np
 from fun_colors import *
-PROMPTLIMIT=256
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 print("import pass")
 #------------------------------------------------
@@ -264,24 +263,25 @@ class PT_model_v2:
     
     
     # ========================================
-    def run_model(self,data=None,length=256):
+    def run_model(self,data=None,length=256,verbose=False):
         if data is None:
             context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target,verbose)
             return ('GEN:~'+target )
         else:
-            context = list( data_clean(data) )
-            if len(context)<256:
-                for i in range( 256-len(context) ): context.append('')
+            data_yay = list( data_clean(data) )
             try:
-                context = self.PT_encode(context)
+                context = self.PT_encode2(data_yay)
+                context.append(self.SOS)
             except KeyError as e:
                 prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
+                return
             
-            context= self.get_batch(context,context)[0]
-            
-            target = self.PT_decode(self.m.generate(context, max_new_tokens=length)[0].tolist())
-            # target = target[len(data):]
+            context= self.PT_encode3([context])
+            context = context.to(self.device)
+            target = self.m.generate(context, max_new_tokens=length)[0].tolist()
+            target = self.PT_decode(target,verbose)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
@@ -292,11 +292,18 @@ class PT_model_v2:
     def PT_encode3(self,data):
         return torch.from_numpy( np.array(data, dtype=np.int64) ).type(torch.long)
     
-    def PT_decode(self,data):
+    def PT_decode(self,data,verbose=False):
+        try:
+            data=data[data.index(self.SOS)+1:]   #cut off
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
         try:
             data=data[:data.index(self.buffer)+1]   #cut off
-        except Exception:
-            target_index = None
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
+            
         return fun_decode(data,self.itos)
     
     # ==================================================================================================
@@ -381,6 +388,7 @@ class PT_model_v2:
     #NOTE: train model from 'Q&A' Prompts
     #Trains with 'Q' as input and 'A' as target
     #csv (Q&A each <= 256 chars) - can be > but will skip over and waste time
+    #DEFUCT!!!!!!!!!!!!!!!!
     def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
         if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
@@ -612,6 +620,7 @@ class PT_model_v2:
         else:
             x = torch.stack([data for i in range(self.batch_size)])
             y = torch.stack([targets for i in range(self.batch_size)])
+        #prLightPurple(f'x:~{x}\ny:~{y}')
         x, y = x.to(self.device), y.to(self.device)
         return x, y
 
@@ -650,6 +659,6 @@ prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 MODEL.train_model_basic(
     dir_path="book/gutenburg",
     savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
-    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_CRC-pretrain2_{datestr()}.txt',
+    logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_CRC-pretrain2.txt',
     save_iter=10
     )

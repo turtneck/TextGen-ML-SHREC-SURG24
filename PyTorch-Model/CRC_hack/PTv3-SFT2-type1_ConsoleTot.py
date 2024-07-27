@@ -3,39 +3,155 @@ import torch.nn as nn
 from torch.nn import functional as F
 import pandas as pd
 #------------------------
-import os,sys,time,datetime,re
+import os,sys,time,datetime,re,tiktoken
 import numpy as np
-#sys.path.append('D:/projects/base/app/modules') 
-dir_path = os.path.abspath("")
-print(f"DIRECTORY:\t\t<{dir_path}>")
-sys.path.append(dir_path)
 from fun_colors import *
-#------------------------
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
+print("import pass")
+#------------------------------------------------
 
-'''
-changes:
- - higher default context
- - Prompt training while retaining 'finishing' training
- - better loading
- - still by-char focus, by-word available
- 
-could have just kept this as v1, but felt there was enough changes to just make a new verison to make the defaults of meta data easier
-- to remake this as 'v1', change the 2nd hyperparameter (context) to 32
-'''
+#MY BY-CHAR LIBRARY
+
+#Final edition for pretraining
+#Could add functionality of 'End of Sentence' after each '.!?' but not worth it right now (time)
 
 
+#==========================================================
+class Head(nn.Module):
+    """ one head of self-attention """
+
+    def __init__(self, head_size, n_embd, block_size, dropout):
+        super().__init__()
+        self.key = nn.Linear(n_embd, head_size, bias=False)
+        self.query = nn.Linear(n_embd, head_size, bias=False)
+        self.value = nn.Linear(n_embd, head_size, bias=False)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        B,T,C = x.shape
+        k = self.key(x)   # (B,T,C)
+        q = self.query(x) # (B,T,C)
+        # compute attention scores ("affinities")
+        wei = q @ k.transpose(-2,-1) * C**-0.5 # (B, T, C) @ (B, C, T) -> (B, T, T)
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
+        wei = F.softmax(wei, dim=-1) # (B, T, T)
+        wei = self.dropout(wei)
+        # perform the weighted aggregation of the values
+        v = self.value(x) # (B,T,C)
+        out = wei @ v # (B, T, T) @ (B, T, C) -> (B, T, C)
+        return out
+
+class MultiHeadAttention(nn.Module):
+    """ multiple heads of self-attention in parallel """
+
+    def __init__(self, num_heads, head_size, n_embd, block_size, dropout):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size, n_embd, block_size, dropout) for _ in range(num_heads)])
+        self.proj = nn.Linear(n_embd, n_embd)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.dropout(self.proj(out))
+        return out
+
+class FeedFoward(nn.Module):
+    """ a simple linear layer followed by a non-linearity """
+
+    def __init__(self, n_embd, dropout):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 4 * n_embd),
+            nn.ReLU(),
+            nn.Linear(4 * n_embd, n_embd),
+            nn.Dropout(dropout),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Block(nn.Module):
+    """ Transformer block: communication followed by computation """
+
+    def __init__(self, n_embd, n_head, block_size, dropout):
+        # n_embd: embedding dimension, n_head: the number of heads we'd like
+        super().__init__()
+        head_size = n_embd // n_head
+        self.sa = MultiHeadAttention(n_head, head_size, n_embd, block_size, dropout)
+        self.ffwd = FeedFoward(n_embd, dropout)
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
+
+    def forward(self, x):
+        x = x + self.sa(self.ln1(x))
+        x = x + self.ffwd(self.ln2(x))
+        return x
+
+# super simple bigram model
+class BigramLanguageModel(nn.Module):
+
+    def __init__(self, device, vocab_size, block_size, n_embd, n_head, n_layer, dropout):
+        super().__init__()
+        self.device = device
+        self.block_size = block_size
+        # each token directly reads off the logits for the next token from a lookup table
+        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+        self.position_embedding_table = nn.Embedding(block_size, n_embd)
+        self.blocks = nn.Sequential(*[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)])
+        self.ln_f = nn.LayerNorm(n_embd) # final layer norm
+        self.lm_head = nn.Linear(n_embd, vocab_size)
+
+    def forward(self, idx, targets=None):
+        B, T = idx.shape
+
+        # idx and targets are both (B,T) tensor of integers
+        tok_emb = self.token_embedding_table(idx) # (B,T,C)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=self.device)) # (T,C)
+        x = tok_emb + pos_emb # (B,T,C)
+        x = self.blocks(x) # (B,T,C)
+        x = self.ln_f(x) # (B,T,C)
+        logits = self.lm_head(x) # (B,T,vocab_size)
+
+        if targets is None:
+            loss = None
+        else:
+            B, T, C = logits.shape
+            logits = logits.view(B*T, C)
+            targets = targets.view(B*T)
+            loss = F.cross_entropy(logits, targets)
+
+        return logits, loss
+
+    def generate(self, idx, max_new_tokens):
+        # idx is (B, T) array of indices in the current context
+        for _ in range(max_new_tokens):
+            # crop idx to the last block_size tokens
+            idx_cond = idx[:, -self.block_size:]
+            # get the predictions
+            logits, loss = self(idx_cond)
+            # focus only on the last time step
+            logits = logits[:, -1, :] # becomes (B, C)
+            # apply softmax to get probabilities
+            probs = F.softmax(logits, dim=-1) # (B, C)
+            # sample from the distribution
+            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
+            # append sampled index to the running sequence
+            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+        return idx
+print("general ML class pass")
+#------------------------------------------------
 
 
-
-#===============================================================================
-class PT_model_v2:
-    def __init__(self, meta_data, hyperparameters=PTV2_HYPER_DEF, model_path=None,name=None,buffer=None):
+#==========================================================
+class PT_model_v3:
+    def __init__(self, hyperparameters=PTV2_HYPER_DEF, model_path=None,name=None):
         # defaults ---------------------
         torch.manual_seed(1337)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         prPurple(self.device)
-        if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
+        if hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
                     
         # hyperparameters ---------------------
         self.batch_size =   hyperparameters[0] # how many independent sequences will we process in parallel?
@@ -54,33 +170,22 @@ class PT_model_v2:
             
             
         # meta data ---------------------
-        with open(meta_data, 'rb') as f: meta = pickle.load(f)
-        self.stoi = meta['stoi']
-        self.itos = meta['itos']
-        self.vocab_size = meta['vocab_size']+1
-        if meta['int'] == 8: self.mdtype=np.int8
-        elif meta['int'] == 16: self.mdtype=np.int16
-        elif meta['int'] == 32: self.mdtype=np.int32
-        elif meta['int'] == 64: self.mdtype=np.int64
-        elif meta['int'] == 128: self.mdtype=np.int128
-        elif meta['int'] == 256: self.mdtype=np.int256
-        else: raise TypeError(f"unknown meta data type signed: {meta['int']}")
+        self.vocab_size = tiktoken.get_encoding("gpt2").n_vocab+2 #gpt2 vocab size(+2 buffer,SOS) 'tiktoken.get_encoding("gpt2").n_vocab'
         # buffer ---------------------
-        # in my dict 7925 or '' is buffer, 7926 is SOS
-        if buffer is None: self.buffer = [self.stoi[c] for c in ['']][0]
-        else: self.buffer = buffer
+        # the base dict is 0-50256: buffer 50257, SOS 50258
+        self.buffer = self.vocab_size-2
         self.SOS = self.vocab_size-1
         # hypers ---------------------
         prGreen(hyperparameters)
         # name ---------------------
-        if name is None: self.name = 'PTv2'
-        else: self.name = 'PTv2_'+name
+        if name is None: self.name = 'PTv3-tktk'
+        else: self.name = 'PTv3-tktk_'+name
             
             
         # Model ---------------------
         if model_path == None:
             #make new model
-            if meta_data == None or hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
+            if hyperparameters == None: raise SyntaxError("ERROR CREATING MODEL: MISSING INIT DATA")
         
             self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
             self.m = self.model.to(self.device)
@@ -147,50 +252,47 @@ class PT_model_v2:
     
     
     # ========================================
-    def run_model(self,data=None,length=256):
+    def run_model(self,data=None,length=256,verbose=False):
         if data is None:
             context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-            prPurple(f'1context: {context}')
             target = self.m.generate(context, max_new_tokens=length)[0].tolist()
-            prPurple(f'1target1: {target}')
-            target = self.PT_decode(target)
-            prPurple(f'1target2: {target}')
+            target = self.PT_decode(target,verbose)
             return ('GEN:~'+target )
         else:
-            context = list( data_clean(data) )
-            # if len(context)<256:
-            #     # for i in range( 256-len(context) ): context.append('')
-            #     context.append('')
+            data_yay = list( data_clean(data) )
             try:
-                context = self.PT_encode2(context)
+                context = self.PT_encode2(data_yay)
+                context.append(self.SOS)
             except KeyError as e:
                 prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
+                return
             
             context= self.PT_encode3([context])
             context = context.to(self.device)
-            prCyan(f'2context: {context}')
             target = self.m.generate(context, max_new_tokens=length)[0].tolist()
-            prCyan(f'2target1: {target}')
-            prCyan(f'targ_raw: { fun_decode(target,self.itos)}')
-            target = self.PT_decode(target)
-            prCyan(f'2target2: {target}')
-            # target = target[len(data):]
+            target = self.PT_decode(target,verbose)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
-        return torch.from_numpy( np.array(fun_encode(data, self.stoi), dtype=np.int64) ).type(torch.long)
+        return torch.from_numpy( np.array(tiktoken.get_encoding("gpt2").encode(data), dtype=np.int64) ).type(torch.long)
     #split up versions of ^^^ for train_model_prompt2
     def PT_encode2(self,data):
-        return fun_encode(data, self.stoi)
+        return tiktoken.get_encoding("gpt2").encode(data)
     def PT_encode3(self,data):
         return torch.from_numpy( np.array(data, dtype=np.int64) ).type(torch.long)
     
-    def PT_decode(self,data):
+    def PT_decode(self,data,verbose=False):
+        try:
+            data=data[data.index(self.SOS)+1:]   #cut off
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
         try:
             data=data[:data.index(self.buffer)+1]   #cut off
-        except Exception:
-            target_index = None
-        return fun_decode(data,self.itos)
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
+        return tiktoken.get_encoding("gpt2").decode(data)
     
     # ==================================================================================================
     #NOTE: train model from the procedding character (finishing)
@@ -274,6 +376,7 @@ class PT_model_v2:
     #NOTE: train model from 'Q&A' Prompts
     #Trains with 'Q' as input and 'A' as target
     #csv (Q&A each <= 256 chars) - can be > but will skip over and waste time
+    #DEFUCT!!!!!!!!!!!!!!!!
     def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
         if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
@@ -505,7 +608,6 @@ class PT_model_v2:
         else:
             x = torch.stack([data for i in range(self.batch_size)])
             y = torch.stack([targets for i in range(self.batch_size)])
-        #prLightPurple(f'x:~{x}\ny:~{y}')
         x, y = x.to(self.device), y.to(self.device)
         return x, y
 
@@ -523,176 +625,43 @@ class PT_model_v2:
         self.model.train()
         return out
 
+print("tot ML class pass")
+#------------------------------------------------
+
+
 #==========================================================
-class Head(nn.Module):
-    """ one head of self-attention """
+VERSION = '3'
+dir_path = os.path.abspath("")
+modelname=''    #replace when ready
 
-    def __init__(self, head_size, n_embd, block_size, dropout):
-        super().__init__()
-        self.key = nn.Linear(n_embd, head_size, bias=False)
-        self.query = nn.Linear(n_embd, head_size, bias=False)
-        self.value = nn.Linear(n_embd, head_size, bias=False)
-        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+MODEL = PT_model_v3(
+            model_path=dir_path+'/Models/'+modelname,
+            name='_CRC-SFT2-type1')
+print("Model create pass")
+                    
+#------------------------
+#!! running
+prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
+# input("Ready to run training? <ENTER>")
 
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        B,T,C = x.shape
-        k = self.key(x)   # (B,T,C)
-        q = self.query(x) # (B,T,C)
-        # compute attention scores ("affinities")
-        wei = q @ k.transpose(-2,-1) * C**-0.5 # (B, T, C) @ (B, C, T) -> (B, T, T)
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
-        wei = F.softmax(wei, dim=-1) # (B, T, T)
-        wei = self.dropout(wei)
-        # perform the weighted aggregation of the values
-        v = self.value(x) # (B,T,C)
-        out = wei @ v # (B, T, T) @ (B, T, C) -> (B, T, C)
-        return out
-
-class MultiHeadAttention(nn.Module):
-    """ multiple heads of self-attention in parallel """
-
-    def __init__(self, num_heads, head_size, n_embd, block_size, dropout):
-        super().__init__()
-        self.heads = nn.ModuleList([Head(head_size, n_embd, block_size, dropout) for _ in range(num_heads)])
-        self.proj = nn.Linear(n_embd, n_embd)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
-        out = self.dropout(self.proj(out))
-        return out
-
-class FeedFoward(nn.Module):
-    """ a simple linear layer followed by a non-linearity """
-
-    def __init__(self, n_embd, dropout):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
-            nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-class Block(nn.Module):
-    """ Transformer block: communication followed by computation """
-
-    def __init__(self, n_embd, n_head, block_size, dropout):
-        # n_embd: embedding dimension, n_head: the number of heads we'd like
-        super().__init__()
-        head_size = n_embd // n_head
-        self.sa = MultiHeadAttention(n_head, head_size, n_embd, block_size, dropout)
-        self.ffwd = FeedFoward(n_embd, dropout)
-        self.ln1 = nn.LayerNorm(n_embd)
-        self.ln2 = nn.LayerNorm(n_embd)
-
-    def forward(self, x):
-        x = x + self.sa(self.ln1(x))
-        x = x + self.ffwd(self.ln2(x))
-        return x
-
-# super simple bigram model
-class BigramLanguageModel(nn.Module):
-
-    def __init__(self, device, vocab_size, block_size, n_embd, n_head, n_layer, dropout):
-        super().__init__()
-        self.device = device
-        self.block_size = block_size
-        # each token directly reads off the logits for the next token from a lookup table
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.blocks = nn.Sequential(*[Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)])
-        self.ln_f = nn.LayerNorm(n_embd) # final layer norm
-        self.lm_head = nn.Linear(n_embd, vocab_size)
-
-    def forward(self, idx, targets=None):
-        B, T = idx.shape
-
-        # idx and targets are both (B,T) tensor of integers
-        tok_emb = self.token_embedding_table(idx) # (B,T,C)
-        pos_emb = self.position_embedding_table(torch.arange(T, device=self.device)) # (T,C)
-        x = tok_emb + pos_emb # (B,T,C)
-        x = self.blocks(x) # (B,T,C)
-        x = self.ln_f(x) # (B,T,C)
-        logits = self.lm_head(x) # (B,T,vocab_size)
-
-        if targets is None:
-            loss = None
-        else:
-            B, T, C = logits.shape
-            logits = logits.view(B*T, C)
-            targets = targets.view(B*T)
-            loss = F.cross_entropy(logits, targets)
-
-        return logits, loss
-
-    def generate(self, idx, max_new_tokens):
-        # idx is (B, T) array of indices in the current context
-        for _ in range(max_new_tokens):
-            # crop idx to the last block_size tokens
-            idx_cond = idx[:, -self.block_size:]
-            # get the predictions
-            logits, loss = self(idx_cond)
-            # focus only on the last time step
-            logits = logits[:, -1, :] # becomes (B, C)
-            # apply softmax to get probabilities
-            probs = F.softmax(logits, dim=-1) # (B, C)
-            # sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
-            # append sampled index to the running sequence
-            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
-        return idx
-
-
-if __name__ == "__main__":
-    # mod = PT_model_v2(getDrive()+"book/gutenburg_BIN\metas/gutenburg_bin-RBT-char_meta_int64.pkl")
-    # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64")
-    
-    
-    mod = PT_model_v2(
-        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl"#,
-        # model_path=getDrive()+'Models/PyTorch_v2/PTv2__2024-07-26_1_25__119000.pt'
+#NOTE: TRAINING-------------------------
+MODEL.train_model_prompt2(
+    dir_path="prompt/1M-GPT4-Augmented_edit-256-1.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
+    save_iter=1000
     )
-    prCyan(f'vocab: {mod.vocab_size}')
-    prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
-    prCyan(f'buffr: {mod.buffer}')
-    prCyan(f'SOStk: {mod.SOS}')
-    
-    print( mod.run_model() )
-    # print( mod.run_model('hi') )
-    print( mod.run_model('how are you') )
-    print( mod.run_model('how are you.') )
-    print( mod.run_model('Q:how are you A:') )
-    
-    # prRed("\ntime2: Basic")
-    # mod.train_model_basic(
-    #     dir_path=getDrive()+"book/gutenburg",
-    #     logpath=getDrive()+f'v2testing1-SL.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    # prRed("\ntime2: Prompv1: 1")
-    # mod.train_model_prompt(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-    #     logpath=getDrive()+f'v2testing2-SL.txt',
-    #     max_iters=1,
-    #     end=10
-    #     )
-    
-    # prRed("\ntime2: Prompv2: 1")
-    # mod.train_model_prompt2(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
-    #     logpath=getDrive()+f'v2testing3-SL.txt',
-    #     max_iters=1,
-    #     end=10
-    #     )
-    
-    # print( mod.run_model() )
-    # print( mod.run_model('hi') )
-    # print( mod.run_model('how are you') )
+
+MODEL.train_model_prompt2(
+    dir_path="prompt/3_5M-GPT3_5-Augmented_edit-256-1.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
+    save_iter=10000
+    )
+
+MODEL.train_model_prompt2(
+    dir_path="prompt/MovieSorted-256-1.csv",
+    savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
+    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
+    save_iter=10000
+    )

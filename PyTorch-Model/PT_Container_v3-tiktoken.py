@@ -11,7 +11,6 @@ print(f"DIRECTORY:\t\t<{dir_path}>")
 sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
-PROMPTLIMIT=256
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 '''
@@ -131,26 +130,25 @@ class PT_model_v3:
     
     
     # ========================================
-    def run_model(self,data=None,length=256):
+    def run_model(self,data=None,length=256,verbose=False):
         if data is None:
             context = torch.zeros((1, 1), dtype=torch.long, device=self.device)
             target = self.m.generate(context, max_new_tokens=length)[0].tolist()
-            target = self.PT_decode(target)
+            target = self.PT_decode(target,verbose)
             return ('GEN:~'+target )
         else:
-            context = list( data_clean(data) )
-            # if len(context)<256:
-            #     # for i in range( 256-len(context) ): context.append('')
-            #     context.append('')
+            data_yay = list( data_clean(data) )
             try:
-                context = self.PT_encode2(context)
+                context = self.PT_encode2(data_yay)
+                context.append(self.SOS)
             except KeyError as e:
                 prRed(f"ERROR ENCODING INTO DICT:\t invalid key{e}")
+                return
             
             context= self.PT_encode3([context])
             context = context.to(self.device)
             target = self.m.generate(context, max_new_tokens=length)[0].tolist()
-            target = self.PT_decode(target)
+            target = self.PT_decode(target,verbose)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
     def PT_encode(self,data):
@@ -161,11 +159,17 @@ class PT_model_v3:
     def PT_encode3(self,data):
         return torch.from_numpy( np.array(data, dtype=np.int64) ).type(torch.long)
     
-    def PT_decode(self,data):
+    def PT_decode(self,data,verbose=False):
+        try:
+            data=data[data.index(self.SOS)+1:]   #cut off
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
         try:
             data=data[:data.index(self.buffer)+1]   #cut off
-        except Exception:
-            target_index = None
+        except Exception as e:
+            if verbose: prALERT(str(e))
+            target_index = None #dont care about this error, if its not in it shouldn't be
         return tiktoken.get_encoding("gpt2").decode(data)
     
     # ==================================================================================================
@@ -250,6 +254,7 @@ class PT_model_v3:
     #NOTE: train model from 'Q&A' Prompts
     #Trains with 'Q' as input and 'A' as target
     #csv (Q&A each <= 256 chars) - can be > but will skip over and waste time
+    #DEFUCT!!!!!!!!!!!!!!!!
     def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
         if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
@@ -638,7 +643,7 @@ if __name__ == "__main__":
         dir_path=getDrive()+"book/gutenburg",
         logpath=getDrive()+f'v3testing1.txt',
         max_iters=1,
-        end=5000
+        end=1
         )
     
     prRed("\nPrompv1: 1")
@@ -646,7 +651,7 @@ if __name__ == "__main__":
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
         logpath=getDrive()+f'v3testing2.txt',
         max_iters=1,
-        end=5000
+        end=1
         )
     
     prRed("\nPrompv2: 1")
@@ -654,7 +659,7 @@ if __name__ == "__main__":
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
         logpath=getDrive()+f'v3testing3.txt',
         max_iters=1,
-        end=5000
+        end=1
         )
     
     prRed("\nPrompv1: 2")
@@ -662,7 +667,7 @@ if __name__ == "__main__":
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
         logpath=getDrive()+f'v3testing4.txt',
         max_iters=1,
-        end=5000
+        end=1
         )
     
     prRed("\nPrompv2: 2")
@@ -670,7 +675,7 @@ if __name__ == "__main__":
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
         logpath=getDrive()+f'v3testing5.txt',
         max_iters=1,
-        end=5000
+        end=1
         )
     
     print( mod.run_model() )
