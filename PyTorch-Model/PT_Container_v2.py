@@ -11,7 +11,9 @@
 # - several types of trainings (till I found the correct one)
 # - stabilization to original example funcs
 # - default meta values tested to best settings
+#Works with a custom personal dict
 
+#Couldve combined this with v3 by having it use tiktoken if no meta_data given but easier to document
 
 #-------
 import torch
@@ -28,20 +30,6 @@ sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
-
-'''
-changes:
- - higher default context
- - Prompt training while retaining 'finishing' training
- - better loading
- - still by-char focus, by-word available
- 
-could have just kept this as v1, but felt there was enough changes to just make a new verison to make the defaults of meta data easier
-- to remake this as 'v1', change the 2nd hyperparameter (context) to 32
-'''
-
-
-
 
 
 #===============================================================================
@@ -60,7 +48,7 @@ class PT_model_v2:
         self.min_iters =    hyperparameters[3]
         self.max_iters =    hyperparameters[4]
         self.eval_interval= hyperparameters[5]
-        learning_rate= hyperparameters[6]
+        self.learning_rate= hyperparameters[6]
         self.eval_iters =   hyperparameters[7]
         self.n_embd =       hyperparameters[8]
         self.n_head =       hyperparameters[9]
@@ -100,7 +88,7 @@ class PT_model_v2:
         
             self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
             self.m = self.model.to(self.device)
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
             
             prGreen("SUCCESS: MODEL CREATED")
         elif model_path[-3:] !='.pt':
@@ -144,7 +132,7 @@ class PT_model_v2:
             self.model = torch.load(model_path, map_location=self.device)
             self.model.eval()
             self.m = self.model.to(self.device)
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
             
             print("SUCCESS: MODEL LOADED")
             
@@ -160,6 +148,7 @@ class PT_model_v2:
         self.model = torch.load(dir_path)
         self.model.eval()
         self.m = self.model.to(self.device)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
     
     
     # ========================================

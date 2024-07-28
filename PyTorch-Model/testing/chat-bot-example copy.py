@@ -346,6 +346,9 @@ class EncoderRNN(nn.Module):
         # Convert word indexes to embeddings
         embedded = self.embedding(input_seq)
         # Pack padded batch of sequences for RNN module
+        print('>>>input_seq',input_seq)
+        print('>>>embedded',embedded.shape)
+        print('>>>input_lengths',input_lengths)
         packed = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths)
         # Forward pass through GRU
         outputs, hidden = self.gru(packed, hidden)
@@ -618,24 +621,56 @@ class GreedySearchDecoder(nn.Module):
 #--------------
 def evaluate(encoder, decoder, searcher, voc, sentence, max_length=MAX_LENGTH):
     ### Format input sentence as a batch
+    
     # words -> indexes
     indexes_batch = [indexesFromSentence(voc, sentence)]
+    print('indexes_batch: ',indexes_batch)
+    
     # Create lengths tensor
     lengths = torch.tensor([len(indexes) for indexes in indexes_batch])
+    print('lengths: ',lengths)
+    
     # Transpose dimensions of batch to match models' expectations
     input_batch = torch.LongTensor(indexes_batch).transpose(0, 1)
+    print('input_batch: ',input_batch)
+    
+    
     # Use appropriate device
     input_batch = input_batch.to(device)
     lengths = lengths.to("cpu")
+    
+    print('IN: input_batch: ',input_batch)
+    print('IN: lengths: ',lengths)
+    print('IN: max_length: ',max_length)
+    
+    
     # Decode sentence with searcher
     tokens, scores = searcher(input_batch, lengths, max_length)
+    print('tokens: ',tokens)
+    print('token.item(): ',tokens[0].item())
+    print('voc.index2word[token.item()]: ',voc.index2word[tokens[0].item()])
+    print('voc arr: ',[voc.index2word[token.item()] for token in tokens])
+    print('item arr: ',[token.item() for token in tokens])
     # indexes -> words
     decoded_words = [voc.index2word[token.item()] for token in tokens]
+    
+    data = [token.item() for token in tokens]
+    
+    try:
+        data=data[data.index(SOS_token)+1:]   #cut off
+    except Exception as e:
+        target_index = None #dont care about this error, if its not in it shouldn't be
+    try:
+        data=data[:data.index(PAD_token)+1]   #cut off
+    except Exception as e:
+        target_index = None #dont care about this error, if its not in it shouldn't be
+    print('data',data)
+    
+    
     return decoded_words
 
 
 def evaluateInput(encoder, decoder, searcher, voc):
-    input_sentence = ''
     while(1):
         try:
             # Get input sentence
@@ -645,10 +680,15 @@ def evaluateInput(encoder, decoder, searcher, voc):
             # Normalize sentence
             input_sentence = normalizeString(input_sentence)
             print('norm string: ',input_sentence)
+            
             # Evaluate sentence
             output_words = evaluate(encoder, decoder, searcher, voc, input_sentence)
+            print('output_words: ',output_words)
+            
             # Format and print response sentence
             output_words[:] = [x for x in output_words if not (x == 'EOS' or x == 'PAD')]
+            print('output_words2: ',output_words)
+            
             print('Bot:', ' '.join(output_words))
 
         except KeyError:
@@ -744,10 +784,10 @@ for state in decoder_optimizer.state.values():
             state[k] = v.cuda()
 
 # Run training iterations
-print("Starting Training!")
-trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer,
-           embedding, encoder_n_layers, decoder_n_layers, save_dir, n_iteration, batch_size,
-           print_every, save_every, clip, corpus_name, loadFilename)
+# print("Starting Training!")
+# trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer,
+#            embedding, encoder_n_layers, decoder_n_layers, save_dir, n_iteration, batch_size,
+#            print_every, save_every, clip, corpus_name, loadFilename)
 #======================================================================
 #======================================================================
 #======================================================================

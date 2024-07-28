@@ -3,6 +3,7 @@
 #Generates text that continues along its given input
 
 #NOTE: This version works off Open-AI's subword-dict TikToken, otherwise identical to v2
+#Couldve combined this with v3 by having it use tiktoken if no meta_data given but easier to document
 
 
 #-------
@@ -21,14 +22,6 @@ from fun_colors import *
 #------------------------
 PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
 
-'''
-changes:
- - tiktoken dictionary
-'''
-
-
-
-#TODO: do saving onyl every hour not number!!!!!!!!!
 
 #===============================================================================
 class PT_model_v3:
@@ -43,7 +36,7 @@ class PT_model_v3:
         self.batch_size =   hyperparameters[0] # how many independent sequences will we process in parallel?
         self.block_size =   hyperparameters[1] # max input/out len *2
         self.goal =         hyperparameters[2]
-        self.min_iters =    hyperparameters[3]
+        # self.min_iters =    hyperparameters[3]
         self.max_iters =    hyperparameters[4]
         self.eval_interval= hyperparameters[5]
         learning_rate= hyperparameters[6]
@@ -52,7 +45,7 @@ class PT_model_v3:
         self.n_head =       hyperparameters[9]
         self.n_layer =      hyperparameters[10]
         self.dropout =      hyperparameters[11]
-        self.hyperparameters = hyperparameters
+        # self.hyperparameters = hyperparameters
             
             
         # meta data ---------------------

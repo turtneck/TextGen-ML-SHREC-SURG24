@@ -1,4 +1,6 @@
 # Implementing Red-Black Tree in Python
+# - save/load from .bin
+# - ability to convert to a sorted list based on freq of tokens
 
 
 import sys,tiktoken,random,os,shutil,pickle
