@@ -660,6 +660,6 @@ MODEL.train_model_basic(
     dir_path="book/gutenburg",
     savepath=f"Models/PyTorch_v{VERSION}/Gutenburg/",
     logpath=f'Model_Log/PyTorch/PTv{VERSION}_Gutenburg/PTv{VERSION}_CRC-pretrain2.txt',
-    save_iter=10,
+    save_iter=1000,
     start=160
     )
