@@ -17,6 +17,14 @@ import sys
 dir_path = os.path.abspath("")
 print(f"DIRECTORY:\t\t<{dir_path}>")
 sys.path.append(dir_path)
+from fun_colors import *
+
+
+
+
+
+
+
 
 USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
@@ -287,20 +295,32 @@ def binaryMatrix(l, value=PAD_token):
 
 # Returns padded input sequence tensor and lengths
 def inputVar(l, voc):
+    # prCyan(f'l[0]: {l[0]}, {type(l[0])}')
     indexes_batch = [indexesFromSentence(voc, sentence) for sentence in l]
+    # prCyan(f'indexes_batch[0]: {indexes_batch[0]}, {type(indexes_batch[0])}')
     lengths = torch.tensor([len(indexes) for indexes in indexes_batch])
     padList = zeroPadding(indexes_batch)
     padVar = torch.LongTensor(padList)
+    # prPurple(f'\ninputVar_indexes_batch: {indexes_batch[0]}\n{type(indexes_batch[0])}')
+    # prPurple(f'\ninputVar_lengths: {lengths[0]}\n{type(lengths[0])}, {type(lengths)}, {lengths.shape}')
+    # prPurple(f'\ninputVar_padVar: {padVar[0]}\n{type(padVar[0])}, {type(padVar)}, {padVar.shape}')
     return padVar, lengths
 
 # Returns padded target sequence tensor, padding mask, and max target length
 def outputVar(l, voc):
+    # print('---------------')
+    # prCyan(f'l[0]: {l[0]}, {type(l[0])}')
     indexes_batch = [indexesFromSentence(voc, sentence) for sentence in l]
+    # prCyan(f'indexes_batch[0]: {indexes_batch[0]}, {type(indexes_batch[0])}')
     max_target_len = max([len(indexes) for indexes in indexes_batch])
     padList = zeroPadding(indexes_batch)
     mask = binaryMatrix(padList)
     mask = torch.BoolTensor(mask)
     padVar = torch.LongTensor(padList)
+    # prPurple(f'\noutputVar_indexes_batch: {indexes_batch[0]}\n{type(indexes_batch[0])}')
+    # prPurple(f'\noutputVar_max_target_len: {max_target_len}\n{type(max_target_len)}')
+    # prPurple(f'\noutputVar_mask: {mask[0]}\n{type(mask[0])}, {type(mask)}, {mask.shape}')
+    # prPurple(f'\noutputVar_padVar: {padVar[0]}\n{type(padVar[0])}, {type(padVar)}, {padVar.shape}')
     return padVar, mask, max_target_len
 
 # Returns all items for a given batch of pairs
@@ -315,16 +335,7 @@ def batch2TrainData(voc, pair_batch):
     return inp, lengths, output, mask, max_target_len
 
 
-# Example for validation
-small_batch_size = 5
-batches = batch2TrainData(voc, [random.choice(pairs) for _ in range(small_batch_size)])
-input_variable, lengths, target_variable, mask, max_target_len = batches
 
-print("input_variable:", input_variable)
-print("lengths:", lengths)
-print("target_variable:", target_variable)
-print("mask:", mask)
-print("max_target_len:", max_target_len)
 #======================================================================
 #======================================================================
 #======================================================================
@@ -346,9 +357,9 @@ class EncoderRNN(nn.Module):
         # Convert word indexes to embeddings
         embedded = self.embedding(input_seq)
         # Pack padded batch of sequences for RNN module
-        print('>>>input_seq',input_seq)
-        print('>>>embedded',embedded.shape)
-        print('>>>input_lengths',input_lengths)
+        # print('>>>input_seq',input_seq)
+        # print('>>>embedded',embedded.shape)
+        # print('>>>input_lengths',input_lengths)
         packed = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths)
         # Forward pass through GRU
         outputs, hidden = self.gru(packed, hidden)
@@ -493,8 +504,8 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
     # Forward batch of sequences through decoder one time step at a time
-    print(f'E_in:~{input_variable}')
-    print(f'D_in:~{decoder_input}')
+    # print(f'E_in:~{input_variable}')
+    # print(f'D_in:~{decoder_input}')
     if use_teacher_forcing:
         for t in range(max_target_len):
             decoder_output, decoder_hidden = decoder(
@@ -521,9 +532,9 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
             loss += mask_loss
             print_losses.append(mask_loss.item() * nTotal)
             n_totals += nTotal
-    print(f'\nE_out:~{encoder_outputs}')
-    print(f'D_out:~{decoder_output}')
-    print(f'D_in2:~{decoder_input}')
+    # print(f'\nE_out:~{encoder_outputs}')
+    # print(f'D_out:~{decoder_output}')
+    # print(f'D_in2:~{decoder_input}')
 
     # Perform backpropagation
     loss.backward()
@@ -544,7 +555,9 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
 
     # Load batches for each iteration
     training_batches = [batch2TrainData(voc, [random.choice(pairs) for _ in range(batch_size)])
-                      for _ in range(n_iteration)]
+                        for _ in range(n_iteration)]
+                        # for _ in range(1)]
+    # prRed(training_batches[0])
 
     # Initializations
     print('Initializing ...')
@@ -555,10 +568,13 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
 
     # Training loop
     print("Training...")
-    for iteration in range(start_iteration, n_iteration + 1):
+    for iteration in range(start_iteration, n_iteration + 1):       
         training_batch = training_batches[iteration - 1]
+        # prCyan(training_batch)
         # Extract fields from batch
         input_variable, lengths, target_variable, mask, max_target_len = training_batch
+        
+        #ENCODE DONE
 
         # Run a training iteration with batch
         loss = train(input_variable, lengths, target_variable, mask, max_target_len, encoder,
@@ -570,20 +586,21 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
             print_loss_avg = print_loss / print_every
             print("Iteration: {}; Percent complete: {:.1f}%; Average loss: {:.4f}".format(iteration, iteration / n_iteration * 100, print_loss_avg))
             print_loss = 0
-        print('==========================================\n\n\n')
+        # print('==========================================\n\n\n')
 
         # Save checkpoint
-        if (iteration % save_every == 0):
-            torch.save({
-                            'iteration': iteration,
-                            'en': encoder.state_dict(),
-                            'de': decoder.state_dict(),
-                            'en_opt': encoder_optimizer.state_dict(),
-                            'de_opt': decoder_optimizer.state_dict(),
-                            'loss': loss,
-                            'voc_dict': voc.__dict__,
-                            'embedding': embedding.state_dict()
-                        }, os.path.join('Models', '{}_{}.tar'.format(iteration, 'checkpoint')))
+        # if (iteration % save_every == 0):
+        #     torch.save({
+        #                     'iteration': iteration,
+        #                     'en': encoder.state_dict(),
+        #                     'de': decoder.state_dict(),
+        #                     'en_opt': encoder_optimizer.state_dict(),
+        #                     'de_opt': decoder_optimizer.state_dict(),
+        #                     'loss': loss,
+        #                     'voc_dict': voc.__dict__,
+        #                     'embedding': embedding.state_dict()
+        #                 }, os.path.join('Models', '{}_{}.tar'.format(iteration, 'checkpoint')))
+        
 #--------------
 #--------------
 #--------------
@@ -784,10 +801,10 @@ for state in decoder_optimizer.state.values():
             state[k] = v.cuda()
 
 # Run training iterations
-# print("Starting Training!")
-# trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer,
-#            embedding, encoder_n_layers, decoder_n_layers, save_dir, n_iteration, batch_size,
-#            print_every, save_every, clip, corpus_name, loadFilename)
+print("Starting Training!")
+trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, decoder_optimizer,
+           embedding, encoder_n_layers, decoder_n_layers, save_dir, n_iteration, batch_size,
+           print_every, save_every, clip, corpus_name, loadFilename)
 #======================================================================
 #======================================================================
 #======================================================================
@@ -803,4 +820,4 @@ decoder.eval()
 searcher = GreedySearchDecoder(encoder, decoder)
 
 # !!!!!!!!Begin chatting (uncomment and run the following line to begin)
-evaluateInput(encoder, decoder, searcher, voc)
+# evaluateInput(encoder, decoder, searcher, voc)

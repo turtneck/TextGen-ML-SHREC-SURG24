@@ -6,7 +6,7 @@ import pandas as pd
 import os,sys,time,datetime,re,tiktoken
 import numpy as np
 from fun_colors import *
-PTV2_HYPER_DEF=[24,128*2,0.7,1000,30000,100,1e-3,200,64,4,4,0.0]
+PTV2_HYPER_DEF=[24,128*2,0.7,10,1000,30000,100,1e-3,200,64,4,4,0.0]
 print("import pass")
 #------------------------------------------------
 
@@ -157,16 +157,17 @@ class PT_model_v3:
         self.batch_size =   hyperparameters[0] # how many independent sequences will we process in parallel?
         self.block_size =   hyperparameters[1] # max input/out len *2
         self.goal =         hyperparameters[2]
-        self.min_iters =    hyperparameters[3]
-        self.max_iters =    hyperparameters[4]
-        self.eval_interval= hyperparameters[5]
-        learning_rate= hyperparameters[6]
-        self.eval_iters =   hyperparameters[7]
-        self.n_embd =       hyperparameters[8]
-        self.n_head =       hyperparameters[9]
-        self.n_layer =      hyperparameters[10]
-        self.dropout =      hyperparameters[11]
-        self.hyperparameters = hyperparameters
+        self.goal_cnt =     hyperparameters[3]
+        self.min_iters =    hyperparameters[4]
+        self.max_iters =    hyperparameters[5]
+        self.eval_interval= hyperparameters[6]
+        self.learning_rate= hyperparameters[7]
+        self.eval_iters =   hyperparameters[8]
+        self.n_embd =       hyperparameters[9]
+        self.n_head =       hyperparameters[10]
+        self.n_layer =      hyperparameters[11]
+        self.dropout =      hyperparameters[12]
+        # self.hyperparameters = hyperparameters
             
             
         # meta data ---------------------
@@ -340,6 +341,7 @@ class PT_model_v3:
             else: raise TypeError(f"non 'txt' or 'bin' file for 'train_model_prompt' not supported")
             
             #actual training
+            goal_cnt=0
             for iter in range(max_iters):
                 # every once in a while evaluate the loss on train and val sets
                 if iter % self.eval_interval == 0 or iter == max_iters - 1:
@@ -356,7 +358,8 @@ class PT_model_v3:
                 self.optimizer.zero_grad(set_to_none=True)
                 self.loss.backward()
                 self.optimizer.step()
-                if losses <= self.goal: break
+                if losses <= self.goal: goal_cnt+=1
+                if goal_cnt>=self.goal_cnt: break
             #post
             nowtime=time.time()
             prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -365,7 +368,7 @@ class PT_model_v3:
             #save
             if cnt%save_iter == 0:
                 if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                else: self.save_model(getDrive()+f'Models/PyTorch_v3/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                 nowtime=time.time()
                 prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -377,6 +380,7 @@ class PT_model_v3:
     #Trains with 'Q' as input and 'A' as target
     #csv (Q&A each <= 256 chars) - can be > but will skip over and waste time
     #DEFUCT!!!!!!!!!!!!!!!!
+    '''
     def train_model_prompt(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
         if max_iters is None: max_iters = self.max_iters
         prGreen(f'train_dir: {dir_path}')
@@ -452,6 +456,7 @@ class PT_model_v3:
                 #----------------------------------
                 
                 #actual training
+                goal_cnt=0
                 for iter in range(max_iters):
                     # every once in a while evaluate the loss on train and val sets
                     if iter % self.eval_interval == 0 or iter == max_iters - 1:
@@ -468,7 +473,8 @@ class PT_model_v3:
                     self.optimizer.zero_grad(set_to_none=True)
                     self.loss.backward()
                     self.optimizer.step()
-                    if losses <= self.goal: break
+                    if losses <= self.goal: goal_cnt+=1
+                    if goal_cnt>=self.goal_cnt: break
                 #post
                 nowtime=time.time()
                 prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -477,14 +483,14 @@ class PT_model_v3:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_v3/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 cnt+=1
             except StopIteration:
                 break
-    
+    '''
     
     # ========================================
     #NOTE: train model from 'Q&A' Prompts
@@ -539,6 +545,11 @@ class PT_model_v3:
                     response = list( str(list(df.response)[0]) )
                 question = list( data_clean(''.join(question)) )
                 response = list( data_clean(''.join(response)) )
+                if len(question)>=1000 or len(response)>=1000:
+                    prRed(f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
+                    cnt+=1
+                    continue
                 
                 
                 try:
@@ -557,7 +568,7 @@ class PT_model_v3:
                 del response,question
                 
                 #----------------------------------
-                
+                goal_cnt=0
                 #actual training
                 for iter in range(max_iters):
                     # every once in a while evaluate the loss on train and val sets
@@ -575,7 +586,8 @@ class PT_model_v3:
                     self.optimizer.zero_grad(set_to_none=True)
                     self.loss.backward()
                     self.optimizer.step()
-                    if losses <= self.goal: break
+                    if losses <= self.goal: goal_cnt+=1
+                    if goal_cnt>=self.goal_cnt: break
                 #post
                 nowtime=time.time()
                 prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -584,7 +596,7 @@ class PT_model_v3:
                 #save
                 if cnt%save_iter == 0:
                     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
-                    else: self.save_model(getDrive()+f'Models/PyTorch_v2/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
+                    else: self.save_model(getDrive()+f'Models/PyTorch_3/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.pt')
                     nowtime=time.time()
                     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
@@ -641,7 +653,7 @@ print("Model create pass")
                     
 #------------------------
 #!! running
-prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
+# prRed(f'TRAINING LEN: {len(os.listdir("book/gutenburg"))}')
 # input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------

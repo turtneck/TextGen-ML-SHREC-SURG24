@@ -24,7 +24,7 @@ print(f"DIRECTORY:\t\t<{dir_path}>")
 sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
-PTChatBot_HYPER_DEF=[500,2,2,0.1,64,  50.0,1.0,0.0001,5.0,4000,1,500]
+PTChatBot_HYPER_DEF=[500,2,2,0.1,64,  50.0,1.0,0.0001,5.0,4000,1,500,  1000,0.7,10,30000]
 
 
 #===============================================================================
@@ -50,6 +50,10 @@ class PT_Chatbot:
         self.n_iteration            = hyperparameters[9]
         self.print_every            = hyperparameters[10]
         self.save_every             = hyperparameters[11]
+        self.eval_interval  = hyperparameters[12]#from last containers
+        self.goal           = hyperparameters[13]
+        self.goal_cnt       = hyperparameters[14]
+        self.max_iters      = hyperparameters[15]
         self.hyperparameters = hyperparameters
             
             
@@ -126,6 +130,18 @@ class PT_Chatbot:
         if model_path:
             self.encoder_optimizer.load_state_dict(encoder_optimizer_sd)
             self.decoder_optimizer.load_state_dict(decoder_optimizer_sd)
+
+        # If you have CUDA, configure CUDA to call
+        if self.device == 'cuda':
+            for state in self.encoder_optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
+
+            for state in self.decoder_optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
         
         self.encoder.eval()
         self.decoder.eval()
@@ -179,6 +195,18 @@ class PT_Chatbot:
         self.decoder_optimizer = optim.Adam(self.decoder.parameters(), lr=self.learning_rate * self.decoder_learning_ratio)
         self.encoder_optimizer.load_state_dict(encoder_optimizer_sd)
         self.decoder_optimizer.load_state_dict(decoder_optimizer_sd)
+
+        # If you have CUDA, configure CUDA to call
+        if self.device == 'cuda':
+            for state in self.encoder_optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
+
+            for state in self.decoder_optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
         
         self.encoder.eval()
         self.decoder.eval()
@@ -277,7 +305,225 @@ class PT_Chatbot:
     
     # ==================================================================================================
     def train_model(self,dir_path,savepath=None,logpath=None,start=0,end=None,add_message='',save_iter=1000,max_iters=None):
-        return
+        if max_iters is None: max_iters = self.max_iters
+        prGreen(f'train_dir: {dir_path}')
+        prGreen(f'savepath: {savepath}')
+        
+        #NOTE: [!!!!] load csv, iterate through it for each training
+        print( dir_path[-4:] )
+        if dir_path[-4:] == '.csv':
+            if end:
+                if end>csv_size(dir_path): raise ValueError("End past size of data")
+                sze=end-1
+            else: sze = csv_size(dir_path)-start #get size of data (#rows)
+            cnt=0
+            df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
+            #iterate till start
+            while cnt != start: df = next(df_iter); cnt+=1
+        else: raise TypeError(f"nonCSV file for 'train_model_prompt' not supported")
+        prGreen("CSV LOAD SUCCESS")
+        
+        #NOTE: [!!!!] setting uplog info
+        if logpath==None: logpath = getDrive()+f'Model_Log/PyTorch/{self.name}-TRAIN__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}.txt'
+        prGreen(f'logpath: {logpath}')
+        script_time=time.time()
+        file_helper( logpath )#if log doesnt exist make it
+        if self.hyperparameters: logger(logpath,   f"{self.hyperparameters}")
+        else: logger(logpath,   f"No hyperparameters given during objects INIT")
+        logger(logpath,   f"\n\n[!!!!!] START\t{str(datetime.datetime.now())}")
+        
+        
+        #NOTE: [!!!!] iterate through dataset
+        while True:
+            try:
+                if not end is None:
+                    if cnt >= end: break
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
+                start_time=time.time()
+                
+                df = next(df_iter)
+
+                question = data_clean(''.join(str(list(df.question)[0])))
+                response = data_clean(''.join(str(list(df.response)[0])))
+                if len(question)>=1000 or len(response)>=1000:
+                    prRed(f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
+                    cnt+=1
+                    continue
+                    
+                # prCyan( f'q: <<<{question}>>>' )
+                
+                #encode
+                try:
+                    question = self.PT_encode2(question)
+                    question.append(self.EOS_token)
+                    response = self.PT_encode2(response)
+                    response.append(self.EOS_token)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
+                    continue
+                
+                #batch2TrainData
+                #inputVar
+                # prCyan( f'q: <<<{question}>>>, {type(question)}' )
+                lengths = torch.tensor([len(question)]*self.batch_size)
+                input_variable = torch.LongTensor( list(itertools.zip_longest(*([question]*self.batch_size), fillvalue=self.PAD_token)) )
+                # prPurple(f'\ninputVar_lengths: {lengths[0]}\n{type(lengths[0])}, {type(lengths)}, {lengths.shape}')
+                # prPurple(f'\ninputVar_padVar: {input_variable[0]}\n{type(input_variable[0])}, {type(input_variable)}, {input_variable.shape}')
+                
+                #outputVar
+                # prALERT('---------------')
+                # prCyan( f'r: <<<{response}>>>, {type(response)}' )
+                max_target_len = len(response)
+                mask = torch.BoolTensor( self.binaryMatrix(list(itertools.zip_longest(*([response]*self.batch_size), fillvalue=self.PAD_token))) )
+                target_variable = torch.LongTensor( list(itertools.zip_longest(*[response], fillvalue=self.PAD_token)) )
+                # prPurple(f'\noutputVar_max_target_len: {max_target_len}\n{type(max_target_len)}')
+                # prPurple(f'\noutputVar_mask: {mask[0]}\n{type(mask[0])}, {type(mask)}, {mask.shape}')
+                # prPurple(f'\noutputVar_padVar: {target_variable[0]}\n{type(target_variable[0])}, {type(target_variable)}, {target_variable.shape}')
+                
+                del response,question
+                                
+                #----------------------------------
+                self.encoder.train()
+                self.decoder.train()
+                goal_cnt=0
+                
+                #actual training
+                for iter in range(max_iters):
+                    #TODO: TRAINING
+                    #===================================================
+                    # Zero gradients
+                    self.encoder_optimizer.zero_grad()
+                    self.decoder_optimizer.zero_grad()
+
+                    # Set device options
+                    input_variable = input_variable.to(self.device)
+                    target_variable = target_variable.to(self.device)
+                    mask = mask.to(self.device)
+                    # Lengths for RNN packing should always be on the CPU
+                    lengths = lengths.to("cpu")
+
+                    # Initialize variables
+                    loss = 0
+                    print_losses = []
+                    n_totals = 0
+
+                    # Forward pass through encoder
+                    encoder_outputs, encoder_hidden = self.encoder(input_variable, lengths)
+
+                    # Create initial decoder input (start with SOS tokens for each sentence)
+                    decoder_input = torch.LongTensor([[self.SOS_token for _ in range(self.batch_size)]])
+                    decoder_input = decoder_input.to(self.device)
+
+                    # Set initial decoder hidden state to the encoder's final hidden state
+                    decoder_hidden = encoder_hidden[:self.decoder.n_layers]
+
+                    # Determine if we are using teacher forcing this iteration
+                    use_teacher_forcing = True if random.random() < self.teacher_forcing_ratio else False
+
+                    # Forward batch of sequences through decoder one time step at a time
+                    # print(f'E_in:~{input_variable}')
+                    # print(f'D_in:~{decoder_input}')
+                    if use_teacher_forcing:
+                        decoder_output, decoder_hidden = self.decoder( decoder_input, decoder_hidden, encoder_outputs )
+                        # Teacher forcing: next input is current target
+                        decoder_input = target_variable[0].view(1, -1)
+                        # Calculate and accumulate loss
+                        mask_loss, nTotal = self.maskNLLLoss(decoder_output, target_variable[0], mask[0])
+                        loss += mask_loss
+                        print_losses.append(mask_loss.item() * nTotal)
+                        n_totals += nTotal
+                    else:
+                        decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+                        # No teacher forcing: next input is decoder's own current output
+                        _, topi = decoder_output.topk(1)
+                        decoder_input = torch.LongTensor([[topi[i][0] for i in range(self.batch_size)]])
+                        decoder_input = decoder_input.to(self.device)
+                        # Calculate and accumulate loss
+                        mask_loss, nTotal = self.maskNLLLoss(decoder_output, target_variable[0], mask[0])
+                        loss += mask_loss
+                        print_losses.append(mask_loss.item() * nTotal)
+                        n_totals += nTotal
+
+                    # Perform backpropagation
+                    loss.backward()
+
+                    # Clip gradients: gradients are modified in place
+                    _ = nn.utils.clip_grad_norm_(self.encoder.parameters(), self.clip)
+                    _ = nn.utils.clip_grad_norm_(self.decoder.parameters(), self.clip)
+
+                    # Adjust model weights
+                    self.encoder_optimizer.step()
+                    self.decoder_optimizer.step()
+
+                    losses = sum(print_losses) / n_totals   #return: average loss
+                    
+                    
+                    
+                    
+                    #===================================================
+                    #return of training
+                    #----
+                    if iter % self.eval_interval == 0 or iter == max_iters - 1:
+                        nowtime=time.time()
+                        prYellow(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>\t<{gdFL( 100*iter/max_iters )}%>  step {iter}/{max_iters}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                        logger(logpath,   f"step {iter}:{' '*(2+len(str(max_iters))-len(str(iter)))}train loss {losses:.4f}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    if losses <= self.goal: goal_cnt+=1
+                    if goal_cnt>=self.goal_cnt: break
+                #post
+                nowtime=time.time()
+                prPurple(add_message+f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                
+                #save
+                # if cnt%save_iter == 0:
+                #     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.tar')
+                #     else: self.save_model(getDrive()+f'Models/PT-ChatBot/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.tar')
+                #     nowtime=time.time()
+                #     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                #     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                cnt+=1
+            except StopIteration:
+                break
+        
+    # ========================================
+    def binaryMatrix(self, l):
+        m = []
+        for i, seq in enumerate(l):
+            m.append([])
+            for token in seq:
+                if token == self.PAD_token:
+                    m[i].append(0)
+                else:
+                    m[i].append(1)
+        return m
+    def maskNLLLoss(self,inp, target, mask):
+        nTotal = mask.sum()
+        crossEntropy = -torch.log(torch.gather(inp, 1, target.view(-1, 1)).squeeze(1))
+        loss = crossEntropy.masked_select(mask).mean()
+        loss = loss.to(self.device)
+        return loss, nTotal.item()
+    def batch2TrainData(self,question,response):
+        #inputVar
+        # prCyan( f'q: <<<{question}>>>, {type(question)}' )
+        lengths = torch.tensor([len(question)])
+        input_variable = torch.LongTensor( list(itertools.zip_longest(*([question]*self.batch_size), fillvalue=self.PAD_token)) )
+        # prPurple(f'\ninputVar_lengths: {lengths[0]}\n{type(lengths[0])}, {type(lengths)}, {lengths.shape}')
+        # prPurple(f'\ninputVar_padVar: {input_variable[0]}\n{type(input_variable[0])}, {type(input_variable)}, {input_variable.shape}')
+        
+        #outputVar
+        # prALERT('---------------')
+        # prCyan( f'r: <<<{response}>>>, {type(response)}' )
+        max_target_len = len(response)
+        mask = torch.BoolTensor( self.binaryMatrix(list(itertools.zip_longest(*([response]*self.batch_size), fillvalue=self.PAD_token))) )
+        target_variable = torch.LongTensor( list(itertools.zip_longest(*[response], fillvalue=self.PAD_token)) )
+        # prPurple(f'\noutputVar_max_target_len: {max_target_len}\n{type(max_target_len)}')
+        # prPurple(f'\noutputVar_mask: {mask[0]}\n{type(mask[0])}, {type(mask)}, {mask.shape}')
+        # prPurple(f'\noutputVar_padVar: {target_variable[0]}\n{type(target_variable[0])}, {type(target_variable)}, {target_variable.shape}')
+        return input_variable, lengths, target_variable, mask, max_target_len
     
 
 #==========================================================
@@ -423,5 +669,57 @@ class GreedySearchDecoder(nn.Module):
     
 #==========================================================
 if __name__ == "__main__":
-    mod= PT_Chatbot(name='Test')
-    mod.run_model()
+    # #general test----------
+    # mod= PT_Chatbot(name='Test')
+    # mod.run_model()
+    
+    # #general training test----------
+    # mod.train_model(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
+    #     logpath=getDrive()+f'CHATBOT-testing.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
+    
+    #save/load test
+    # mod.save_model(getDrive()+'Models/PT-ChatBot/PT-CB_SL-TEST.tar')
+    # mod2 = PT_Chatbot(
+    #     name='Test2',
+    #     model_path=getDrive()+'Models/PT-ChatBot/PT-Chatbot-v1_2024-07-28_4_29__2024-07-28_4_32__2000.tar'
+    #     )
+    # mod2.train_model(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
+    #     logpath=getDrive()+f'CHATBOT-testing.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
+    # mod2.run_model()
+    
+    #NOTE: CRC-------------------------
+    date_str = datestr()
+    mod= PT_Chatbot()
+    print("Model create pass")
+    
+    mod.train_model(
+        dir_path="prompt/1M-GPT4-Augmented_edit-full-1.csv",
+        savepath=f"Models/PT-ChatBot/",
+        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
+        save_iter=1000
+        )
+    mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_1M-GPT4.tar")
+
+    mod.train_model(
+        dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv",
+        savepath=f"Models/PT-ChatBot/",
+        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
+        save_iter=10000
+        )
+    mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_3_5M-GPT3_5.tar")
+
+    mod.train_model(
+        dir_path="prompt/MovieSorted-full-1.csv",
+        savepath=f"Models/PT-ChatBot/",
+        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
+        save_iter=10000
+        )
+    mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_MovieSorted.tar")

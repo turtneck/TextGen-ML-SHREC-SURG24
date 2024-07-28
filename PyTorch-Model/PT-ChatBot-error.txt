@@ -1,0 +1,53 @@
+---------------------------------------------------------------------------
+OutOfMemoryError                          Traceback (most recent call last)
+Cell In[1], line 694
+    691 mod= PT_Chatbot(name=date_str)
+    692 print("Model create pass")
+--> 694 mod.train_model(
+    695     dir_path="prompt/1M-GPT4-Augmented_edit-full-1.csv",
+    696     savepath=f"Models/PT-ChatBot/",
+    697     logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
+    698     save_iter=1000
+    699     )
+    701 mod.train_model(
+    702     dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv",
+    703     savepath=f"Models/PT-ChatBot/",
+    704     logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
+    705     save_iter=10000
+    706     )
+    708 mod.train_model(
+    709     dir_path="prompt/MovieSorted-full-1.csv",
+    710     savepath=f"Models/PT-ChatBot/",
+    711     logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
+    712     save_iter=10000
+    713     )
+
+Cell In[1], line 444, in PT_Chatbot.train_model(self, dir_path, savepath, logpath, start, end, add_message, save_iter, max_iters)
+    441     n_totals += nTotal
+    443 # Perform backpropagation
+--> 444 loss.backward()
+    446 # Clip gradients: gradients are modified in place
+    447 _ = nn.utils.clip_grad_norm_(self.encoder.parameters(), self.clip)
+
+File /ihome/crc/install/pytorch/2.0.1/python3.10/lib/python3.10/site-packages/torch/_tensor.py:487, in Tensor.backward(self, gradient, retain_graph, create_graph, inputs)
+    477 if has_torch_function_unary(self):
+    478     return handle_torch_function(
+    479         Tensor.backward,
+    480         (self,),
+   (...)
+    485         inputs=inputs,
+    486     )
+--> 487 torch.autograd.backward(
+    488     self, gradient, retain_graph, create_graph, inputs=inputs
+    489 )
+
+File /ihome/crc/install/pytorch/2.0.1/python3.10/lib/python3.10/site-packages/torch/autograd/__init__.py:200, in backward(tensors, grad_tensors, retain_graph, create_graph, grad_variables, inputs)
+    195     retain_graph = create_graph
+    197 # The reason we repeat same the comment below is that
+    198 # some Python versions print out the first line of a multi-line function
+    199 # calls in the traceback and some print out the last line
+--> 200 Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+    201     tensors, grad_tensors_, retain_graph, create_graph, inputs,
+    202     allow_unreachable=True, accumulate_grad=True)
+
+OutOfMemoryError: CUDA out of memory. Tried to allocate 7.19 GiB (GPU 0; 39.38 GiB total capacity; 24.74 GiB already allocated; 6.07 GiB free; 32.78 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF

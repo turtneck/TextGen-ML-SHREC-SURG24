@@ -9,3 +9,4 @@ PyTorch-Model/Models/hi.txt
 PyTorch-Model/testing/4000_checkpoint.tar
 PyTorch-Model/testing/utterances.jsonl
 formatted_movie_lines.txt
+PyTorch-Model/testing/PT_testing.ipynb
