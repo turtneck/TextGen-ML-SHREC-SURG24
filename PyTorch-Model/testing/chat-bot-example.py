@@ -750,11 +750,11 @@ trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, decoder_
 #======================================================================
 #end lol
 # Set dropout layers to ``eval`` mode
-encoder.eval()
-decoder.eval()
+# encoder.eval()
+# decoder.eval()
 
-# Initialize search module
-searcher = GreedySearchDecoder(encoder, decoder)
+# # Initialize search module
+# searcher = GreedySearchDecoder(encoder, decoder)
 
-# !!!!!!!!Begin chatting (uncomment and run the following line to begin)
-evaluateInput(searcher, voc)
+# # !!!!!!!!Begin chatting (uncomment and run the following line to begin)
+# evaluateInput(searcher, voc)

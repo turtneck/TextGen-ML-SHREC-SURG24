@@ -677,7 +677,8 @@ MODEL.train_model_prompt2(
     dir_path="prompt/1M-GPT4-Augmented_edit-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
-    save_iter=1000
+    save_iter=100000,
+    end=350000
     )
 MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type1/PTv2__CRC-SFT2-type1__1M-GPT4.pt")
 
@@ -685,7 +686,8 @@ MODEL.train_model_prompt2(
     dir_path="prompt/3_5M-GPT3_5-Augmented_edit-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
-    save_iter=10000
+    save_iter=100000,
+    end=350000
     )
 MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type1/PTv2__CRC-SFT2-type1__3_5M-GPT3_5.pt")
 
@@ -693,6 +695,6 @@ MODEL.train_model_prompt2(
     dir_path="prompt/MovieSorted-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
-    save_iter=10000
+    save_iter=100000
     )
 MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type1/PTv2__CRC-SFT2-type1__MovieSorted.pt")

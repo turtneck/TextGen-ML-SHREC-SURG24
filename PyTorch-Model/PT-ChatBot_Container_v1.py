@@ -312,10 +312,12 @@ class PT_Chatbot:
         #NOTE: [!!!!] load csv, iterate through it for each training
         print( dir_path[-4:] )
         if dir_path[-4:] == '.csv':
+            sze = csv_size(dir_path)
+            if sze < self.batch_size: raise ValueError(f"csv too small: {sze} < {self.batch_size}")
             if end:
-                if end>csv_size(dir_path): raise ValueError("End past size of data")
+                if end>sze: raise ValueError("End past size of data")
                 sze=end-1
-            else: sze = csv_size(dir_path)-start #get size of data (#rows)
+            else: sze = sze-start #get size of data (#rows)
             cnt=0
             df_iter = pd.read_csv(dir_path, iterator=True, chunksize=1)
             #iterate till start
@@ -334,14 +336,11 @@ class PT_Chatbot:
         
         
         #NOTE: [!!!!] iterate through dataset
-        while True:
-            try:
-                if not end is None:
-                    if cnt >= end: break
-                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
-                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
-                start_time=time.time()
-                
+        #start with collection of pairs
+        input_batch = [None]#first val empty, load next 63 in; append and pop every cycle
+        output_batch = [None]
+        try:
+            while len(input_batch)<64:
                 df = next(df_iter)
 
                 question = data_clean(''.join(str(list(df.question)[0])))
@@ -351,9 +350,6 @@ class PT_Chatbot:
                     logger(logpath, f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
                     cnt+=1
                     continue
-                    
-                # prCyan( f'q: <<<{question}>>>' )
-                
                 #encode
                 try:
                     question = self.PT_encode2(question)
@@ -365,21 +361,63 @@ class PT_Chatbot:
                     logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
                     cnt+=1
                     continue
+                #ready
+                input_batch.append(question)
+                output_batch.append(response)
+        except StopIteration:
+            raise ValueError(f"PRELOAD BREAK; csv too small: {sze} < {self.batch_size}")
+        
+        
+        
+        #------------
+        #True Loop
+        while True:
+            try:
+                if not end is None:
+                    if cnt >= end: break
+                prCyan(add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...")
+                logger(logpath,   add_message+f"PROG {cnt-start}/{sze+1}: <{gdFL( 100*(cnt-start)/(sze+1) )}%>...======================================")
+                start_time=time.time()
+                
+                #prep
+                df = next(df_iter)
+
+                question = data_clean(''.join(str(list(df.question)[0])))
+                response = data_clean(''.join(str(list(df.response)[0])))
+                if len(question)>=1000 or len(response)>=1000:
+                    prRed(f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
+                    cnt+=1
+                    continue                
+                #encode
+                try:
+                    question = self.PT_encode2(question)
+                    question.append(self.EOS_token)
+                    response = self.PT_encode2(response)
+                    response.append(self.EOS_token)
+                except KeyError as e:
+                    prRed(f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    logger(logpath, f"Skipped {cnt}:\tERROR: invalid key{e}")
+                    cnt+=1
+                    continue
+                #QUEUE Q&A
+                input_batch.pop(0);input_batch.append(question)
+                output_batch.pop(0);output_batch.append(response)
                 
                 #batch2TrainData
                 #inputVar
                 # prCyan( f'q: <<<{question}>>>, {type(question)}' )
-                lengths = torch.tensor([len(question)]*self.batch_size)
-                input_variable = torch.LongTensor( list(itertools.zip_longest(*([question]*self.batch_size), fillvalue=self.PAD_token)) )
+                lengths = torch.tensor([len(indexes) for indexes in input_batch])
+                input_variable = torch.LongTensor( list(itertools.zip_longest(*input_batch, fillvalue=self.PAD_token)) )
                 # prPurple(f'\ninputVar_lengths: {lengths[0]}\n{type(lengths[0])}, {type(lengths)}, {lengths.shape}')
                 # prPurple(f'\ninputVar_padVar: {input_variable[0]}\n{type(input_variable[0])}, {type(input_variable)}, {input_variable.shape}')
                 
                 #outputVar
                 # prALERT('---------------')
                 # prCyan( f'r: <<<{response}>>>, {type(response)}' )
-                max_target_len = len(response)
-                mask = torch.BoolTensor( self.binaryMatrix(list(itertools.zip_longest(*([response]*self.batch_size), fillvalue=self.PAD_token))) )
-                target_variable = torch.LongTensor( list(itertools.zip_longest(*[response], fillvalue=self.PAD_token)) )
+                max_target_len = max([len(indexes) for indexes in output_batch])
+                mask = torch.BoolTensor( self.binaryMatrix(list(itertools.zip_longest(*output_batch, fillvalue=self.PAD_token))) )
+                target_variable = torch.LongTensor( list(itertools.zip_longest(*output_batch, fillvalue=self.PAD_token)) )
                 # prPurple(f'\noutputVar_max_target_len: {max_target_len}\n{type(max_target_len)}')
                 # prPurple(f'\noutputVar_mask: {mask[0]}\n{type(mask[0])}, {type(mask)}, {mask.shape}')
                 # prPurple(f'\noutputVar_padVar: {target_variable[0]}\n{type(target_variable[0])}, {type(target_variable)}, {target_variable.shape}')
@@ -400,6 +438,7 @@ class PT_Chatbot:
                     self.decoder_optimizer.zero_grad()
 
                     # Set device options
+                    # prCyan(f'InVar: [{input_variable.shape}],\n{input_variable}')
                     input_variable = input_variable.to(self.device)
                     target_variable = target_variable.to(self.device)
                     mask = mask.to(self.device)
@@ -543,7 +582,7 @@ class EncoderRNN(nn.Module):
         # Convert word indexes to embeddings
         embedded = self.embedding(input_seq)
         # Pack padded batch of sequences for RNN module
-        packed = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths)
+        packed = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths, enforce_sorted=False)
         # Forward pass through GRU
         outputs, hidden = self.gru(packed, hidden)
         # Unpack padding
@@ -669,9 +708,9 @@ class GreedySearchDecoder(nn.Module):
     
 #==========================================================
 if __name__ == "__main__":
-    # #general test----------
+    #general test----------
     # mod= PT_Chatbot(name='Test')
-    # mod.run_model()
+    # # # mod.run_model()
     
     # #general training test----------
     # mod.train_model(
@@ -695,31 +734,41 @@ if __name__ == "__main__":
     #     )
     # mod2.run_model()
     
-    #NOTE: CRC-------------------------
-    date_str = datestr()
-    mod= PT_Chatbot()
-    print("Model create pass")
     
-    mod.train_model(
-        dir_path="prompt/1M-GPT4-Augmented_edit-full-1.csv",
-        savepath=f"Models/PT-ChatBot/",
-        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
-        save_iter=1000
-        )
-    mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_1M-GPT4.tar")
+    
+    
+    
+    #NOTE: CRC-------------------------
+    # mod= PT_Chatbot()
+    # print("Model create pass")
+    
+    # mod.train_model(
+    #     dir_path="prompt/1M-GPT4-Augmented_edit-full-1.csv",
+    #     savepath=f"Models/PT-ChatBot/",
+    #     logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_1M-GPT4.txt',
+    #     save_iter=100000,
+    #     end=350000
+    #     )
+    # mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_1M-GPT4.tar")
+    
+    
+    #----
+    mod= PT_Chatbot(model_path="Models/PT-ChatBot/PT-ChatBot_1M-GPT4.tar")
+    print("Model create pass")
 
     mod.train_model(
         dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv",
         savepath=f"Models/PT-ChatBot/",
-        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
-        save_iter=10000
+        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_ChatBot_3_5M-GPT3_5.txt',
+        save_iter=100000,
+        end=350000
         )
     mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_3_5M-GPT3_5.tar")
 
     mod.train_model(
         dir_path="prompt/MovieSorted-full-1.csv",
         savepath=f"Models/PT-ChatBot/",
-        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_{date_str}.txt',
-        save_iter=10000
+        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_MovieSorted.txt',
+        save_iter=100000
         )
     mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_MovieSorted.tar")

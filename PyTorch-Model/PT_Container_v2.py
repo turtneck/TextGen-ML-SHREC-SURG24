@@ -673,19 +673,18 @@ if __name__ == "__main__":
     
     
     mod = PT_model_v2(
-        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-        model_path="Models/PyTorch_v2/Gutenburg/PTv2__CRC-pretrain2__2024-07-27_0_8__140.pt"
+        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl"
     )
-    prCyan(f'vocab: {mod.vocab_size}')
-    prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
-    prCyan(f'buffr: {mod.buffer}')
-    prCyan(f'SOStk: {mod.SOS}')
+    # prCyan(f'vocab: {mod.vocab_size}')
+    # prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
+    # prCyan(f'buffr: {mod.buffer}')
+    # prCyan(f'SOStk: {mod.SOS}')
     
-    print( mod.run_model() )
-    print( mod.run_model('hi') )
-    print( mod.run_model('how are you.') )
+    # print( mod.run_model() )
+    # print( mod.run_model('hi') )
+    # print( mod.run_model('how are you.') )
     
-    prRed("\nBasic")
+    # prRed("\nBasic")
     mod.train_model_basic(
         dir_path=getDrive()+"book/gutenburg",
         logpath=getDrive()+f'v2testing1-SL.txt',
@@ -701,13 +700,14 @@ if __name__ == "__main__":
     #     max_iters=1
     #     )
     
-    prRed("\nPrompv2: 1")
+    # prRed("\nPrompv2: 1")
     mod.train_model_prompt2(
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
         logpath=getDrive()+f'v2testing3.txt',
         max_iters=1,
         end=1
         )
+    print( mod.run_model(length=20) )
     
     # prRed("\nPrompv1: 2")
     # mod.train_model_prompt(
@@ -717,17 +717,17 @@ if __name__ == "__main__":
     #     end=1
     #     )
     
-    prRed("\nPrompv2: 2")
-    mod.train_model_prompt2(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-        logpath=getDrive()+f'v2testing5.txt',
-        max_iters=1,
-        end=1
-        )
+    # prRed("\nPrompv2: 2")
+    # mod.train_model_prompt2(
+    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
+    #     logpath=getDrive()+f'v2testing5.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
     
-    print( mod.run_model() )
-    print( mod.run_model('hi') )
-    print( mod.run_model('how are you') )
+    # print( mod.run_model() )
+    # print( mod.run_model('hi') )
+    # print( mod.run_model('how are you') )
     
     # mod.save_model(getDrive()+'v2_save-test1.pt')
     

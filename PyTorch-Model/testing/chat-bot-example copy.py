@@ -357,9 +357,9 @@ class EncoderRNN(nn.Module):
         # Convert word indexes to embeddings
         embedded = self.embedding(input_seq)
         # Pack padded batch of sequences for RNN module
-        # print('>>>input_seq',input_seq)
-        # print('>>>embedded',embedded.shape)
-        # print('>>>input_lengths',input_lengths)
+        # prGreen('>>>input_seq',input_seq)
+        # prGreen('>>>embedded',embedded.shape)
+        # prGreen('>>>input_lengths',input_lengths)
         packed = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths)
         # Forward pass through GRU
         outputs, hidden = self.gru(packed, hidden)
@@ -474,6 +474,13 @@ def maskNLLLoss(inp, target, mask):
 def train(input_variable, lengths, target_variable, mask, max_target_len, encoder, decoder, embedding,
           encoder_optimizer, decoder_optimizer, batch_size, clip, max_length=MAX_LENGTH):
 
+    #prints
+    prPurple(f'\ninputVar_lengths: {lengths[0]}\n{type(lengths[0])}, {type(lengths)}, {lengths.shape}')
+    prPurple(f'\ninputVar_padVar: {input_variable[0]}\n{type(input_variable[0])}, {type(input_variable)}, {input_variable.shape}')
+    prPurple(f'\noutputVar_max_target_len: {max_target_len}\n{type(max_target_len)}')
+    prPurple(f'\noutputVar_mask: {mask[0]}\n{type(mask[0])}, {type(mask)}, {mask.shape}')
+    prPurple(f'\noutputVar_padVar: {target_variable[0]}\n{type(target_variable[0])}, {type(target_variable)}, {target_variable.shape}')
+    
     # Zero gradients
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
@@ -499,6 +506,8 @@ def train(input_variable, lengths, target_variable, mask, max_target_len, encode
 
     # Set initial decoder hidden state to the encoder's final hidden state
     decoder_hidden = encoder_hidden[:decoder.n_layers]
+    prGreen(f'\encoder_hidden: {encoder_hidden}\n{encoder_hidden[0]}\n{type(encoder_hidden[0])}, {type(encoder_hidden)}, {encoder_hidden.shape}')
+    prYellow(f'\encoder_outputs: {encoder_outputs}\n{encoder_outputs[0]}\n{type(encoder_outputs[0])}, {type(encoder_outputs)}, {encoder_outputs.shape}')
 
     # Determine if we are using teacher forcing this iteration
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
@@ -575,7 +584,7 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
         input_variable, lengths, target_variable, mask, max_target_len = training_batch
         
         #ENCODE DONE
-
+        prCyan(f'InVar: [{input_variable.shape}],\n{input_variable}')
         # Run a training iteration with batch
         loss = train(input_variable, lengths, target_variable, mask, max_target_len, encoder,
                      decoder, embedding, encoder_optimizer, decoder_optimizer, batch_size, clip)
@@ -586,6 +595,7 @@ def trainIters(model_name, voc, pairs, encoder, decoder, encoder_optimizer, deco
             print_loss_avg = print_loss / print_every
             print("Iteration: {}; Percent complete: {:.1f}%; Average loss: {:.4f}".format(iteration, iteration / n_iteration * 100, print_loss_avg))
             print_loss = 0
+        return
         # print('==========================================\n\n\n')
 
         # Save checkpoint
