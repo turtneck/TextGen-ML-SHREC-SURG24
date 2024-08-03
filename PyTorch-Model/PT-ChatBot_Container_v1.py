@@ -753,14 +753,17 @@ if __name__ == "__main__":
     
     
     #----
+    print( f"SIZE2: {csv_size('prompt/3_5M-GPT3_5-Augmented_edit-full-2.csv')}" )
+    print( f"SIZE3: {csv_size('prompt/MovieSorted-256-4.csv')}" )
+    input("Ready?")
     mod= PT_Chatbot(model_path="Models/PT-ChatBot/PT-ChatBot_1M-GPT4.tar")
     print("Model create pass")
 
     mod.train_model(
-        dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv",
+        dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-2.csv",
         savepath=f"Models/PT-ChatBot/",
         logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_ChatBot_3_5M-GPT3_5.txt',
-        save_iter=100000,
+        save_iter=35000,
         end=350000
         )
     mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_3_5M-GPT3_5.tar")
@@ -769,6 +772,6 @@ if __name__ == "__main__":
         dir_path="prompt/MovieSorted-full-1.csv",
         savepath=f"Models/PT-ChatBot/",
         logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_MovieSorted.txt',
-        save_iter=100000
+        save_iter=21400
         )
     mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_MovieSorted.tar")

@@ -455,6 +455,7 @@ class PT_model_v2:
                 
                 
                 try:
+                    prLightPurple(f"q:~<{question}>")
                     train_torch_input = self.PT_encode2(question)
                     train_torch_input.append(self.SOS)
                     train_torch_input.extend( self.PT_encode2(response) )
@@ -668,13 +669,14 @@ class BigramLanguageModel(nn.Module):
 
 
 if __name__ == "__main__":
-    # mod = PT_model_v2(getDrive()+"book/gutenburg_BIN\metas/gutenburg_bin-RBT-char_meta_int64.pkl")
+    mod = PT_model_v2(meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl")
     # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64")
     
     
-    mod = PT_model_v2(
-        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl"
-    )
+    # mod = PT_model_v2(
+    #     meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+    #     model_path="Models/PyTorch_v2/Gutenburg/PTv2__CRC-pretrain2__2024-08-01_2_43__1030.pt"
+    # )
     # prCyan(f'vocab: {mod.vocab_size}')
     # prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
     # prCyan(f'buffr: {mod.buffer}')
@@ -682,15 +684,15 @@ if __name__ == "__main__":
     
     # print( mod.run_model() )
     # print( mod.run_model('hi') )
-    # print( mod.run_model('how are you.') )
+    # print( mod.run_model('how are you?') )
     
     # prRed("\nBasic")
-    mod.train_model_basic(
-        dir_path=getDrive()+"book/gutenburg",
-        logpath=getDrive()+f'v2testing1-SL.txt',
-        max_iters=1,
-        end=1
-        )
+    # mod.train_model_basic(
+    #     dir_path=getDrive()+"book/gutenburg",
+    #     logpath=getDrive()+f'v2testing1-SL.txt',
+    #     max_iters=1,
+    #     end=1
+    #     )
     
     # prRed("\nPrompv1: 1")
     # mod.train_model_prompt(
@@ -700,14 +702,14 @@ if __name__ == "__main__":
     #     max_iters=1
     #     )
     
-    # prRed("\nPrompv2: 1")
+    prRed("\nPrompv2: 1")
     mod.train_model_prompt2(
         dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
         logpath=getDrive()+f'v2testing3.txt',
         max_iters=1,
         end=1
         )
-    print( mod.run_model(length=20) )
+    # print( mod.run_model(length=20) )
     
     # prRed("\nPrompv1: 2")
     # mod.train_model_prompt(

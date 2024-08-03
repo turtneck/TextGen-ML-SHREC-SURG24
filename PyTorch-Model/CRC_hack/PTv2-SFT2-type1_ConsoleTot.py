@@ -6,7 +6,7 @@ import pandas as pd
 import csv,os,sys,time,datetime,multiprocessing,re
 import numpy as np
 from fun_colors import *
-PTV2_HYPER_DEF=[24,128*2,0.7,10,1000,30000,100,1e-3,200,64,4,4,0.0]
+PTV2_HYPER_DEF=[24,128*2,0.2,10,1000,30000,100,1e-3,200,64,4,4,0.0]
 print("import pass")
 #------------------------------------------------
 
@@ -659,11 +659,11 @@ print("tot ML class pass")
 #==========================================================
 VERSION = '2'
 dir_path = os.path.abspath("")
-modelname=''    #replace when ready
+modelname='PTv2__CRC-pretrain2__2024-08-01_2_43__1030.pt'
 
 MODEL = PT_model_v2(
             meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-            model_path=dir_path+'/Models/'+modelname,
+            model_path='Models/PyTorch_v2/Gutenburg/'+modelname,
             name='_CRC-SFT2-type1')
 print("Model create pass")
                     
@@ -673,12 +673,17 @@ print("Model create pass")
 # input("Ready to run training? <ENTER>")
 
 #NOTE: TRAINING-------------------------
+print( f"SIZE1: {csv_size('prompt/1M-GPT4-Augmented_edit-256-1.csv')}" )
+print( f"SIZE2: {csv_size('prompt/3_5M-GPT3_5-Augmented_edit-256-1.csv')}" )
+print( f"SIZE3: {csv_size('prompt/MovieSorted-256-1.csv')}" )
+# input("Ready?")
+
 MODEL.train_model_prompt2(
     dir_path="prompt/1M-GPT4-Augmented_edit-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
-    save_iter=100000,
-    end=350000
+    save_iter=1800,
+    end=18000
     )
 MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type1/PTv2__CRC-SFT2-type1__1M-GPT4.pt")
 
@@ -686,8 +691,8 @@ MODEL.train_model_prompt2(
     dir_path="prompt/3_5M-GPT3_5-Augmented_edit-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
-    save_iter=100000,
-    end=350000
+    save_iter=1800,
+    end=18000
     )
 MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type1/PTv2__CRC-SFT2-type1__3_5M-GPT3_5.pt")
 
@@ -695,6 +700,7 @@ MODEL.train_model_prompt2(
     dir_path="prompt/MovieSorted-256-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type1/",
     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type1.txt',
-    save_iter=100000
+    save_iter=1800,
+    end=18000
     )
 MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type1/PTv2__CRC-SFT2-type1__MovieSorted.pt")

@@ -20,7 +20,7 @@ print(f"DIRECTORY:\t\t<{dir_path}>")
 sys.path.append(dir_path)
 from fun_colors import *
 #------------------------
-PTV2_HYPER_DEF=[24,128*2,0.7,10,1000,30000,100,1e-3,200,64,4,4,0.0]
+PTV2_HYPER_DEF=[24,128*2,0.2,10,1000,30000,100,1e-3,200,64,4,4,0.0]
 
 
 #===============================================================================
@@ -46,7 +46,7 @@ class PT_model_v3:
         self.n_head =       hyperparameters[10]
         self.n_layer =      hyperparameters[11]
         self.dropout =      hyperparameters[12]
-        # self.hyperparameters = hyperparameters
+        self.hyperparameters = hyperparameters
             
             
         # meta data ---------------------
@@ -69,7 +69,7 @@ class PT_model_v3:
         
             self.model = BigramLanguageModel(device=self.device, vocab_size=self.vocab_size, block_size=self.block_size, n_embd=self.n_embd, n_head=self.n_head, n_layer=self.n_layer, dropout=self.dropout)
             self.m = self.model.to(self.device)
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
             
             prGreen("SUCCESS: MODEL CREATED")
         elif model_path[-3:] !='.pt':
@@ -92,12 +92,11 @@ class PT_model_v3:
                 self.model.load_state_dict(  torch.load(model_path+"/"+model_list[-1], map_location=self.device)  )
                 self.model.eval()
                 self.m = self.model.to(self.device)
-                self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+                self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
                 
                 prGreen("SUCCESS: MODEL LOADED")
             except Exception as e:
                 prALERT(str(e))
-                print(Style.RESET_ALL)
                 os._exit()         
         else:
             #load model from file
@@ -113,7 +112,7 @@ class PT_model_v3:
             self.model = torch.load(model_path, map_location=self.device)
             self.model.eval()
             self.m = self.model.to(self.device)
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
             
             print("SUCCESS: MODEL LOADED")
             
@@ -422,8 +421,8 @@ class PT_model_v3:
                 except Exception:
                     question = list( str(list(df.question)[0]) )
                     response = list( str(list(df.response)[0]) )
-                question = list( data_clean(''.join(question)) )
-                response = list( data_clean(''.join(response)) )
+                question = data_clean(''.join(question))
+                response = data_clean(''.join(response))
                 if len(question)>=1000 or len(response)>=1000:
                     prRed(f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
                     logger(logpath, f"Skipped {cnt}:\tERROR: too long {len(question)}, {len(response)}")
