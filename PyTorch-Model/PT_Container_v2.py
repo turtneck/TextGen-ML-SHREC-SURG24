@@ -175,6 +175,13 @@ class PT_model_v2:
             target = self.PT_decode(target,verbose)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
+    def chat_model(self,length=256):
+        while True:
+            print("-------")
+            in_run=input()
+            if in_run=='q':break
+            print( mod.run_model(str(in_run),length) )
+    
     def PT_encode(self,data):
         return torch.from_numpy( np.array(fun_encode(data, self.stoi), dtype=np.int64) ).type(torch.long)
     #split up versions of ^^^ for train_model_prompt2
@@ -186,15 +193,18 @@ class PT_model_v2:
     def PT_decode(self,data,verbose=False):
         try:
             data=data[data.index(self.SOS)+1:]   #cut off
+            data.remove(self.SOS)
         except Exception as e:
             if verbose: prALERT(str(e))
             target_index = None #dont care about this error, if its not in it shouldn't be
         try:
-            data=data[:data.index(self.buffer)+1]   #cut off
+            data=data[:data.index(self.buffer)]   #cut off
+            data.remove(self.buffer)
         except Exception as e:
             if verbose: prALERT(str(e))
             target_index = None #dont care about this error, if its not in it shouldn't be
-            
+        if self.SOS in data: raise ValueError("SOS token in pre-decoded data")
+        if self.buffer in data: raise ValueError("Buffer token in pre-decoded data")
         return fun_decode(data,self.itos)
     
     # ==================================================================================================
@@ -669,118 +679,23 @@ class BigramLanguageModel(nn.Module):
 
 
 if __name__ == "__main__":
-    mod = PT_model_v2(meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl")
-    # mod.train_model_basic(getDrive()+"book/gutenburg_BIN/char_64")
     
+    mod = PT_model_v2(
+        meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
+        model_path="Models/PyTorch_v2/SFT-type1/PTv2__CRC-SFT2-type1__MovieSorted.pt"
+    )
+    prCyan(f'vocab: {mod.vocab_size}')
+    prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
+    prCyan(f'buffr: {mod.buffer}')
+    prCyan(f'SOStk: {mod.SOS}')
     
-    # mod = PT_model_v2(
-    #     meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-    #     model_path="Models/PyTorch_v2/Gutenburg/PTv2__CRC-pretrain2__2024-08-01_2_43__1030.pt"
-    # )
-    # prCyan(f'vocab: {mod.vocab_size}')
-    # prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
-    # prCyan(f'buffr: {mod.buffer}')
-    # prCyan(f'SOStk: {mod.SOS}')
-    
-    # print( mod.run_model() )
-    # print( mod.run_model('hi') )
-    # print( mod.run_model('how are you?') )
-    
-    # prRed("\nBasic")
-    # mod.train_model_basic(
-    #     dir_path=getDrive()+"book/gutenburg",
-    #     logpath=getDrive()+f'v2testing1-SL.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    # prRed("\nPrompv1: 1")
-    # mod.train_model_prompt(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-    #     logpath=getDrive()+f'v2testing2.txt',
-    #     end=1,
-    #     max_iters=1
-    #     )
-    
-    prRed("\nPrompv2: 1")
-    mod.train_model_prompt2(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-        logpath=getDrive()+f'v2testing3.txt',
-        max_iters=1,
-        end=1
-        )
-    # print( mod.run_model(length=20) )
-    
-    # prRed("\nPrompv1: 2")
-    # mod.train_model_prompt(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-    #     logpath=getDrive()+f'v2testing4.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    # prRed("\nPrompv2: 2")
-    # mod.train_model_prompt2(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-    #     logpath=getDrive()+f'v2testing5.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    # print( mod.run_model() )
-    # print( mod.run_model('hi') )
-    # print( mod.run_model('how are you') )
-    
-    # mod.save_model(getDrive()+'v2_save-test1.pt')
-    
-    # #-----------
-    # del mod
-    # mod2 = PT_model_v2(
-    #     meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-    #     model_path=getDrive()+'v2_save-test1.pt'
-    # )
-    
-    # prRed("\ntime2: Basic")
-    # mod2.train_model_basic(
-    #     dir_path=getDrive()+"book/gutenburg",
-    #     logpath=getDrive()+f'v2testing1-SL.txt',
-    #     max_iters=1,
-    #     end=10
-    #     )
-    
-    # prRed("\ntime2: Prompv1: 1")
-    # mod2.train_model_prompt(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-    #     logpath=getDrive()+f'v2testing2-SL.txt',
-    #     max_iters=1,
-    #     end=10
-    #     )
-    
-    # prRed("\ntime2: Prompv2: 1")
-    # mod2.train_model_prompt2(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
-    #     logpath=getDrive()+f'v2testing3-SL.txt',
-    #     max_iters=1,
-    #     end=10
-    #     )
-    
-    # print( mod2.run_model() )
-    # print( mod2.run_model('hi') )
-    # print( mod2.run_model('how are you') )
-    
-    
-    #--------------------------
-    
-    
-    # mod = PT_model_v2(
-    #     meta_data=getDrive()+"book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-    #     model_path=dir_path+'/PyTorch-Model/Models/PTv2__2024-07-25_23_56__75000.pt'
-    # )
-    # prCyan(f'vocab: {mod.vocab_size}')
-    # prCyan(f'vocab_norm: {len(mod.stoi)}, {len(mod.itos)}')
-    # prCyan(f'buffr: {mod.buffer}')
-    # prCyan(f'SOStk: {mod.SOS}')
-    
-    # print( mod.run_model() )
-    # print( mod.run_model('hi') )
-    # print( mod.run_model('how are you') )
+    print("-------")
+    print( mod.run_model() )
+    print("-------")
+    print( mod.run_model('hi') )
+    print("-------")
+    print( mod.run_model('how are you?') )
+    print("-------")
+    print( mod.run_model('Please generate a normal response.') )
+    print("-------")
+    mod.chat_model()

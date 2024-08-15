@@ -659,11 +659,11 @@ print("tot ML class pass")
 #==========================================================
 VERSION = '2'
 dir_path = os.path.abspath("")
-modelname='PTv2__CRC-pretrain2__2024-08-01_2_43__1030.pt'
+modelname='PTv2__CRC-SFT2-type2__MovieSorted.pt'
 
 MODEL = PT_model_v2(
             meta_data="book/gutenburg_bin-promptfriendly-char_meta_int64.pkl",
-            model_path='Models/PyTorch_v2/Gutenburg/'+modelname,
+            model_path='Models/PyTorch_v2/SFT-type2/'+modelname,
             name='_CRC-SFT2-type2')
 print("Model create pass")
                     
@@ -674,33 +674,45 @@ print("Model create pass")
 
 #NOTE: TRAINING-------------------------
 print( f"SIZE1: {csv_size('prompt/1M-GPT4-Augmented_edit-full-1.csv')}" )
-print( f"SIZE2: {csv_size('prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv')}" )
-print( f"SIZE3: {csv_size('prompt/MovieSorted-256-2.csv')}" )
+# print( f"SIZE2: {csv_size('prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv')}" )
+# print( f"SIZE3: {csv_size('prompt/MovieSorted-256-2.csv')}" )
 # input("Ready?")
+
+# MODEL.train_model_prompt2(
+#     dir_path="prompt/1M-GPT4-Augmented_edit-full-1.csv",
+#     savepath=f"Models/PyTorch_v{VERSION}/SFT-type2/",
+#     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type2.txt',
+#     save_iter=1800,
+#     end=18000
+#     )
+# MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type2/PTv2__CRC-SFT2-type2__1M-GPT4.pt")
+
+# MODEL.train_model_prompt2(
+#     dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv",
+#     savepath=f"Models/PyTorch_v{VERSION}/SFT-type2/",
+#     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type2.txt',
+#     save_iter=1800,
+#     end=18000
+#     )
+# MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type2/PTv2__CRC-SFT2-type2__3_5M-GPT3_5.pt")
+
+# MODEL.train_model_prompt2(
+#     dir_path="prompt/MovieSorted-256-2.csv",
+#     savepath=f"Models/PyTorch_v{VERSION}/SFT-type2/",
+#     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type2.txt',
+#     save_iter=1800,
+#     end=18000
+#     )
+# MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type2/PTv2__CRC-SFT2-type2__MovieSorted.pt")
+
+
+#=====================
 
 MODEL.train_model_prompt2(
     dir_path="prompt/1M-GPT4-Augmented_edit-full-1.csv",
     savepath=f"Models/PyTorch_v{VERSION}/SFT-type2/",
     logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type2.txt',
     save_iter=1800,
-    end=18000
+    start=18000
     )
-MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type2/PTv2__CRC-SFT2-type2__1M-GPT4.pt")
-
-MODEL.train_model_prompt2(
-    dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-1.csv",
-    savepath=f"Models/PyTorch_v{VERSION}/SFT-type2/",
-    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type2.txt',
-    save_iter=1800,
-    end=18000
-    )
-MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type2/PTv2__CRC-SFT2-type2__3_5M-GPT3_5.pt")
-
-MODEL.train_model_prompt2(
-    dir_path="prompt/MovieSorted-256-2.csv",
-    savepath=f"Models/PyTorch_v{VERSION}/SFT-type2/",
-    logpath=f'Model_Log/PyTorch/Prompts/PTv{VERSION}_SFT-type2.txt',
-    save_iter=1800,
-    end=18000
-    )
-MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type2/PTv2__CRC-SFT2-type2__MovieSorted.pt")
+MODEL.save_model(f"Models/PyTorch_v{VERSION}/SFT-type2/PTv2__CRC-SFT2-type2__Fin.pt")

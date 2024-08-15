@@ -138,7 +138,7 @@ class PT_model_v3:
             target = self.PT_decode(target,verbose)
             return ('GEN:~'+target )
         else:
-            data_yay = list( data_clean(data) )
+            data_yay = data_clean(data)
             try:
                 context = self.PT_encode2(data_yay)
                 context.append(self.SOS)
@@ -152,6 +152,13 @@ class PT_model_v3:
             target = self.PT_decode(target,verbose)
             return (f'Q:~{data_clean(data)}\nA:~{target}' )
     
+    def chat_model(self,length=256):
+        while True:
+            print("-------")
+            in_run=input()
+            if in_run=='q':break
+            print( mod.run_model(str(in_run),length) )
+    
     def PT_encode(self,data):
         return torch.from_numpy( np.array(tiktoken.get_encoding("gpt2").encode(data), dtype=np.int64) ).type(torch.long)
     #split up versions of ^^^ for train_model_prompt2
@@ -163,14 +170,18 @@ class PT_model_v3:
     def PT_decode(self,data,verbose=False):
         try:
             data=data[data.index(self.SOS)+1:]   #cut off
+            data.remove(self.SOS)
         except Exception as e:
             if verbose: prALERT(str(e))
             target_index = None #dont care about this error, if its not in it shouldn't be
         try:
-            data=data[:data.index(self.buffer)+1]   #cut off
+            data=data[:data.index(self.buffer)]   #cut off
+            data.remove(self.buffer)
         except Exception as e:
             if verbose: prALERT(str(e))
             target_index = None #dont care about this error, if its not in it shouldn't be
+        if self.SOS in data: raise ValueError("SOS token in pre-decoded data")
+        if self.buffer in data: raise ValueError("Buffer token in pre-decoded data")
         return tiktoken.get_encoding("gpt2").decode(data)
     
     # ==================================================================================================
@@ -644,52 +655,22 @@ class BigramLanguageModel(nn.Module):
 if __name__ == "__main__": 
     
     mod = PT_model_v3(
-        name='_CRC-v3test'
+        name='_CRC-v3test',
+        # model_path='Models/PyTorch_v3-tktk/SFT-type1/PTv3-tktk__CRC-SFT2-type1__2024-08-05_17_10__14400.pt'
+        model_path='Models/PyTorch_v3-tktk/SFT-type2/PTv3-tktk__CRC-SFT2-type2__2024-08-05_14_34__11200.pt'
     )
+    
     prCyan(f'vocab: {mod.vocab_size}')
     prCyan(f'buffr: {mod.buffer}')
     prCyan(f'SOStk: {mod.SOS}')
     
-    # prRed("\nBasic")
-    # mod.train_model_basic(
-    #     dir_path=getDrive()+"book/gutenburg",
-    #     logpath=getDrive()+f'v3testing1.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    # prRed("\nPrompv1: 1")
-    # mod.train_model_prompt(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-1.csv",
-    #     logpath=getDrive()+f'v3testing2.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    prRed("\nPrompv2: 1")
-    mod.train_model_prompt2(
-        dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
-        logpath=getDrive()+f'v3testing3.txt',
-        max_iters=1,
-        end=1
-        )
-    
-    # prRed("\nPrompv1: 2")
-    # mod.train_model_prompt(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-    #     logpath=getDrive()+f'v3testing4.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    # prRed("\nPrompv2: 2")
-    # mod.train_model_prompt2(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-full-1.csv",
-    #     logpath=getDrive()+f'v3testing5.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
+    print("-------")
     print( mod.run_model() )
+    print("-------")
     print( mod.run_model('hi') )
-    print( mod.run_model('how are you') )
+    print("-------")
+    print( mod.run_model('how are you?') )
+    print("-------")
+    print( mod.run_model('Please generate a normal response.') )
+    print("-------")
+    mod.chat_model(20)

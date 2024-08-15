@@ -518,12 +518,12 @@ class PT_Chatbot:
                 logger(logpath,   f"end: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 
                 #save
-                # if cnt%save_iter == 0:
-                #     if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.tar')
-                #     else: self.save_model(getDrive()+f'Models/PT-ChatBot/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.tar')
-                #     nowtime=time.time()
-                #     prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
-                #     logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                if cnt%save_iter == 0:
+                    if savepath: self.save_model(savepath+f'{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.tar')
+                    else: self.save_model(getDrive()+f'Models/PT-ChatBot/{self.name}__{datetime.datetime.now().date()}_{datetime.datetime.now().hour}_{datetime.datetime.now().minute}__{cnt}.tar')
+                    nowtime=time.time()
+                    prLightPurple(add_message+f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
+                    logger(logpath,   f"save: {iter}\t{  goodtime(nowtime-start_time)  }\t<{   goodtime(nowtime-script_time)   }> RUNTIME")
                 cnt+=1
             except StopIteration:
                 break
@@ -563,7 +563,7 @@ class PT_Chatbot:
         # prPurple(f'\noutputVar_mask: {mask[0]}\n{type(mask[0])}, {type(mask)}, {mask.shape}')
         # prPurple(f'\noutputVar_padVar: {target_variable[0]}\n{type(target_variable[0])}, {type(target_variable)}, {target_variable.shape}')
         return input_variable, lengths, target_variable, mask, max_target_len
-    
+
 
 #==========================================================
 class EncoderRNN(nn.Module):
@@ -708,70 +708,9 @@ class GreedySearchDecoder(nn.Module):
     
 #==========================================================
 if __name__ == "__main__":
-    #general test----------
-    # mod= PT_Chatbot(name='Test')
-    # # # mod.run_model()
-    
-    # #general training test----------
-    # mod.train_model(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
-    #     logpath=getDrive()+f'CHATBOT-testing.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    
-    #save/load test
-    # mod.save_model(getDrive()+'Models/PT-ChatBot/PT-CB_SL-TEST.tar')
-    # mod2 = PT_Chatbot(
-    #     name='Test2',
-    #     model_path=getDrive()+'Models/PT-ChatBot/PT-Chatbot-v1_2024-07-28_4_29__2024-07-28_4_32__2000.tar'
-    #     )
-    # mod2.train_model(
-    #     dir_path=getDrive()+"prompt/1M-GPT4-Augmented_edit-256-2.csv",
-    #     logpath=getDrive()+f'CHATBOT-testing.txt',
-    #     max_iters=1,
-    #     end=1
-    #     )
-    # mod2.run_model()
-    
-    
-    
-    
-    
-    #NOTE: CRC-------------------------
-    # mod= PT_Chatbot()
-    # print("Model create pass")
-    
-    # mod.train_model(
-    #     dir_path="prompt/1M-GPT4-Augmented_edit-full-1.csv",
-    #     savepath=f"Models/PT-ChatBot/",
-    #     logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_1M-GPT4.txt',
-    #     save_iter=100000,
-    #     end=350000
-    #     )
-    # mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_1M-GPT4.tar")
-    
-    
-    #----
-    print( f"SIZE2: {csv_size('prompt/3_5M-GPT3_5-Augmented_edit-full-2.csv')}" )
-    print( f"SIZE3: {csv_size('prompt/MovieSorted-256-4.csv')}" )
-    input("Ready?")
-    mod= PT_Chatbot(model_path="Models/PT-ChatBot/PT-ChatBot_1M-GPT4.tar")
+    mod= PT_Chatbot(
+        # model_path="Models/PT-ChatBot/PT-ChatBot-Type1_3_5M-GPT3_5.tar") #type1
+        model_path="Models/PT-ChatBot/PT-Chatbot-v1__2024-08-05_21_49__64200.tar") #type2
     print("Model create pass")
 
-    mod.train_model(
-        dir_path="prompt/3_5M-GPT3_5-Augmented_edit-full-2.csv",
-        savepath=f"Models/PT-ChatBot/",
-        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_ChatBot_3_5M-GPT3_5.txt',
-        save_iter=35000,
-        end=350000
-        )
-    mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_3_5M-GPT3_5.tar")
-
-    mod.train_model(
-        dir_path="prompt/MovieSorted-full-1.csv",
-        savepath=f"Models/PT-ChatBot/",
-        logpath=f'Model_Log/PT-ChatBot/PT-ChatBot_MovieSorted.txt',
-        save_iter=21400
-        )
-    mod.save_model(f"Models/PT-ChatBot/PT-ChatBot_MovieSorted.tar")
+    mod.run_model()
